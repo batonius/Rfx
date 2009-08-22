@@ -10,26 +10,29 @@ lexString s = case parse mainLexer "" (map toUpper s) of
                 Left err -> error $ "Lexer error\n" ++ show err
                 Right ts -> ts
 
--- | Parses a single whitespace character.
 whiteSpaceCharParser :: Parser Char
 whiteSpaceCharParser = oneOf " \v\f\t\n" <?> "SPACE"
 
--- | Parses a stretch of whitespace.
 whiteSpaceParser :: Parser ()
 whiteSpaceParser = skipMany (whiteSpaceCharParser <?> "")
 
--- | Parses a predefined string
 keywordParser :: String -> Parser String
-keywordParser s = string s <?> ("keyword " ++ s)
+keywordParser s = (do
+                    st <- string s
+                    lookAhead $ choice $ ([do try whiteSpaceCharParser; return ""]
+                                          ++ [do try eof; return ""]
+                                          ++ [try $ string s | (s, _) <- symbolTokens])
+                    return st) <?> ("keyword " ++ s)
 
--- | Parses number
+symbolParser :: String -> Parser String
+symbolParser s = string s <?> ("symbol " ++ s)
+
 numberParser :: Parser Token
 numberParser = do
   whiteSpaceParser
   numberString <- many1 digit
   return $ NumberToken (read numberString)
 
--- | Parse indentifier
 -- TODO Do it right
 identifierParser :: Parser Token
 identifierParser = do
@@ -42,14 +45,26 @@ eofParser = do
   whiteSpaceParser
   eof
   return $ EOFToken
+
+symbolParsers :: [Parser Token]
+symbolParsers = [try $ do
+                   whiteSpaceParser
+                   symbolParser s
+                   return t
+                 | (s, t) <- symbolTokens]
+                       
+keywordParsers :: [Parser Token]
+keywordParsers = [try $ do
+                    whiteSpaceParser
+                    keywordParser s
+                    return t
+                  | (s, t) <- keywordTokens]                       
          
 tokenParser :: Parser Token
-tokenParser = choice $ [try numberParser] ++ [try $ do
-                                                whiteSpaceParser
-                                                keywordParser s
-                                                return t
-                                              | (s, t) <- tokenStrings]
-           ++ [try identifierParser]
+tokenParser = choice $ [try numberParser]
+              ++ keywordParsers
+              ++ symbolParsers
+              ++ [try identifierParser]
 
 mainLexer :: Parser [Token]
 mainLexer = manyTill tokenParser $ try eofParser

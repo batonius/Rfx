@@ -1,4 +1,4 @@
-FIND=find
+FIND=xfind
 
 all: rfx test
 
@@ -22,3 +22,5 @@ clean:
 
 stat:
 	$(FIND) ./ -name "*.hs" -type f -exec wc -l {} \;
+	du -sb ./src
+	du -sb ./test

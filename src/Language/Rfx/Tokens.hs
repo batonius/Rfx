@@ -1,4 +1,4 @@
-module Language.Rfx.Tokens(Token(..), tokenStrings)
+module Language.Rfx.Tokens(Token(..), keywordTokens, symbolTokens)
 where
 
 data Token = NumberToken Int        -- Number
@@ -18,17 +18,20 @@ data Token = NumberToken Int        -- Number
            | EOFToken
              deriving (Show, Eq)
 
-tokenStrings :: [(String, Token)]
-tokenStrings =
-    [("+", PlusToken)
-     ,("-", MinusToken)
-     ,("(", LParToken)
-     ,(")", RParToken)
-     ,("==", EqualToken)
-     ,("=", AssignToken)
-     ,("THREAD", ThreadToken)
-     ,("STATE", StateToken)
-     ,("IF", IfToken)
-     ,("ELSE", ElseToken)
-     ,("END", EndToken)
-     ,(";", SemicolonToken)]
+keywordTokens :: [(String, Token)]
+keywordTokens =
+    [ ("THREAD", ThreadToken)
+    , ("STATE", StateToken)
+    , ("IF", IfToken)
+    , ("ELSE", ElseToken)
+    , ("END", EndToken)]
+
+
+symbolTokens :: [(String, Token)]
+symbolTokens = [ ("+", PlusToken)
+               , ("-", MinusToken)
+               , ("(", LParToken)
+               , (")", RParToken)
+               , ("==", EqualToken)
+               , ("=", AssignToken)
+               , (";", SemicolonToken)]
