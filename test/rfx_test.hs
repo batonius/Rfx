@@ -5,7 +5,7 @@ import Test.QuickCheck
 import Test.HUnit
 
 import Language.Rfx.Compiler
-import Language.Rfx.Tokens()
+import Language.Rfx.Tokens
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
 import Language.Rfx.Structures
@@ -15,13 +15,17 @@ main = do
   defaultMain tests
 
 tests :: [Test.Framework.Test]              
-tests = [ testGroup "rfx tests" [
-                testProperty "Tauto property" tautoProp,
-                testCase "Tauto test" tautoTest,
-                testProperty "Non empty compiler input ==> no empty output" emptyProperty,
-                testCase "Empty compiler input ==> empty output" emptyTest,
-                testCase "Empty lexer string => empty token list" emptyLexerTest,
-                testCase "Empty parser list => empty program" emptyParserTest]]
+tests = [ testGroup "Tauto tests"
+          [ testProperty "Tauto property" tautoProp
+          , testCase "Tauto test" tautoTest]
+          ,
+          testGroup "Lexer tests"
+          [ testCase "Empty lexer string => empty token list" lexerEmptyTest
+          , testProperty "Lexing positive numbers" lexerPosNumProp
+          , testProperty "Lexing negative numbers" lexerNegNumProp
+          , testCase "Basic tokens lexing" lexerTokenStringsTest
+          , testCase "Case insentivity in lexer" lexerCaseInsensivityTest]]
+            
 
 tautoProp :: Int -> Property        
 tautoProp x = odd x ==>
@@ -30,15 +34,21 @@ tautoProp x = odd x ==>
 tautoTest :: Assertion              
 tautoTest = (1::Int) @?= (1::Int)
 
-emptyTest :: Assertion
-emptyTest = compileFile defaultCompilerOptions "" @?= ""
+-- Lexer tests            
+lexerEmptyTest :: Assertion
+lexerEmptyTest = (lexString "") @?= []
 
-emptyProperty :: String -> Property
-emptyProperty s = s /= "" ==>
-                  compileFile defaultCompilerOptions s /= ""
+lexerPosNumProp :: Int -> Property
+lexerPosNumProp n = n>=0 ==> lexString (show n) == [NumberToken n]
+                    
+lexerNegNumProp :: Int -> Property
+lexerNegNumProp n = n<0 ==> lexString (show n) == [NumberToken n]                    
 
-emptyLexerTest :: Assertion
-emptyLexerTest = (lexString "") @?= []
+lexerTokenStringsTest :: Assertion
+lexerTokenStringsTest = assertBool "Basic tokens lexing" $ all id [[t] == (lexString s) | (s, t) <- tokenStrings]
 
-emptyParserTest :: Assertion
-emptyParserTest = (parseTokens []) @?= Program []
+lexerCaseInsensivityTest :: Assertion
+lexerCaseInsensivityTest = do
+  lexString " iF\n" @?= [IfToken]
+  lexString "\tthReaD\n\f" @?= [ThreadToken]
+  lexString "  \t  \n someIdenTifier\n \f" @?= [IdentifierToken "SOMEIDENTIFIER"]

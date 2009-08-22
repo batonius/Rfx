@@ -4,3 +4,7 @@ _*
 *.a
 *.exe
 *.html
+*~
+#*#
+rfx
+rfx_test
