@@ -15,6 +15,7 @@ data Token = NumberToken Int        -- Number
            | ElseToken              -- "else"
            | EndToken               -- "end"
            | SemicolonToken         -- ;
+           | WhereToken             -- "where"
            | EOFToken
              deriving (Show, Eq)
 
@@ -24,7 +25,14 @@ keywordTokens =
     , ("STATE", StateToken)
     , ("IF", IfToken)
     , ("ELSE", ElseToken)
-    , ("END", EndToken)]
+    , ("END", EndToken)
+    , ("WHERE", WhereToken)
+    , ("ПОТОК", ThreadToken)
+    , ("СОСТОЯНИЕ", StateToken)
+    , ("ЕСЛИ", IfToken)
+    , ("ИНАЧЕ", ElseToken)
+    , ("КОНЕЦ", EndToken)
+    , ("ГДЕ", WhereToken)]
 
 
 symbolTokens :: [(String, Token)]

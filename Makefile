@@ -1,4 +1,4 @@
-FIND=xfind
+FIND=find
 
 all: rfx test
 
@@ -7,7 +7,7 @@ rfx: src/rfx.hs src/Language/Rfx/*.hs
 
 test: rfx_test
 
-rfx_test: test/rfx_test.hs src/Language/Rfx/*.hs
+rfx_test: test/rfx_test.hs src/Language/Rfx/*.hs 
 	ghc --make -o rfx_test -Wall test/rfx_test.hs src/Language/Rfx/*.hs
 
 clean:

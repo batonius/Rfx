@@ -18,16 +18,20 @@ tests :: [Test.Framework.Test]
 tests = [ testGroup "Tauto tests"
           [ testProperty "Tauto property" tautoProp
           , testCase "Tauto test" tautoTest]
-          ,
-          testGroup "Lexer tests"
+        , testGroup "Lexer tests"
           [ testCase "Empty lexer string => empty token list" lexerEmptyTest
           , testProperty "Lexing positive numbers" lexerPosNumProp
           , testProperty "Lexing negative numbers" lexerNegNumProp
           , testCase "Keyword tokens lexing" lexerKeywordsTest
           , testCase "Symbol tokens lexing" lexerSymbolsTest
           , testCase "Case insentivity in lexer" lexerCaseInsensivityTest
-          , testCase "Keyword bounaries" lexerMultiKeywordsTest]]
-
+          , testCase "Keyword bounaries" lexerMultiKeywordsTest
+          , testCase "Complex identifiers" lexerComplexIdentifierTest
+          , testCase "Russian utf-8 identifiers" lexerRussianTest]
+        , testGroup "Parser tests"
+          [ testCase "Thread and state without statments" parserEmptyTest
+          , testCase "Multiple threads program" parserMultipleThreadsTest
+          , testCase "Assing statment" parserAssignStatmentTest]]
 
 tautoProp :: Int -> Property
 tautoProp x = odd x ==>
@@ -67,3 +71,49 @@ lexerMultiKeywordsTest = do
   "ifthread" `lexerAssert` [IdentifierToken "IFTHREAD"]
   "if(thread)+state\tend" `lexerAssert` [IfToken, LParToken, ThreadToken, RParToken, PlusToken, StateToken, EndToken]
   "if\nthread\nstate" `lexerAssert` [IfToken, ThreadToken, StateToken]
+
+lexerComplexIdentifierTest :: Assertion
+lexerComplexIdentifierTest = do
+  "test1" `lexerAssert` [IdentifierToken "TEST1"]
+  "t_e_s_12_" `lexerAssert` [IdentifierToken "T_E_S_12_"]
+  "12test12" `lexerAssert` [NumberToken 12, IdentifierToken "test12"]
+  "-_test_-" `lexerAssert` [MinusToken, IdentifierToken "_TEST_", MinusToken]
+
+lexerRussianTest :: Assertion
+lexerRussianTest = do
+  "идентифер" `lexerAssert` [IdentifierToken "ИДЕНТИФЕР"]
+  "если переменная иначе чо конец" `lexerAssert` [IfToken, IdentifierToken "ПЕРЕМЕННАЯ", ElseToken,
+                                                  IdentifierToken "ЧО", EndToken]
+
+-- Parser tests
+parserAssert :: String -> Program -> Assertion
+parserAssert s p = parseProgram (lexString s) @?= p
+
+parserAssertStatment :: String -> [Statment] -> Assertion
+parserAssertStatment s stm = ("thread th where\nstate st where\n" ++ s ++"\nend;\nend;")
+                             `parserAssert`
+                             Program [Thread "TH" [ThreadState "ST" stm]]
+
+parserEmptyTest :: Assertion
+parserEmptyTest = "" `parserAssertStatment` []
+
+parserMultipleThreadsTest :: Assertion
+parserMultipleThreadsTest = do
+  "thread a where\n \
+  \  state aa where\n \
+  \  end;\n \
+  \end;\n \
+  \thread b where\n \
+  \  state bb where\n \
+  \  end;\n \
+  \  state bbb where\n \
+  \  end;\n \
+  \end;"
+  `parserAssert`
+  Program [ Thread "A" [ThreadState "AA" []]
+          , Thread "B" [ThreadState "BB" [], ThreadState "BBB" []]]
+
+parserAssignStatmentTest :: Assertion
+parserAssignStatmentTest = do
+  "var = 12;" `parserAssertStatment` [AssignSt (Variable "VAR") (NumExpr 12)]
+  --TODO Add here more complex expressions

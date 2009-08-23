@@ -16,7 +16,7 @@ defaultCompilerOptions :: CompilerOptions
 defaultCompilerOptions = CompilerOptions PIC
                      
 compileFile :: CompilerOptions -> String -> String
-compileFile _ s = compileProgram $ parseTokens $ lexString s
+compileFile _ s = compileProgram $ parseProgram $ lexString s
 
 compileProgram :: Program -> String
 compileProgram (Program []) = ""

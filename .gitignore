@@ -8,3 +8,5 @@ _*
 #*#
 rfx
 rfx_test
+.*
+!.gitingore

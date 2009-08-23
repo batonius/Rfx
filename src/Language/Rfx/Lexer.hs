@@ -2,7 +2,6 @@ module Language.Rfx.Lexer(lexString)
 where
 import Language.Rfx.Tokens
 import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Error
 import Data.Char(toUpper)
 
 lexString :: String -> [Token]
@@ -17,12 +16,12 @@ whiteSpaceParser :: Parser ()
 whiteSpaceParser = skipMany (whiteSpaceCharParser <?> "")
 
 keywordParser :: String -> Parser String
-keywordParser s = (do
-                    st <- string s
+keywordParser str = (do
+                    st <- string str
                     lookAhead $ choice $ ([do try whiteSpaceCharParser; return ""]
                                           ++ [do try eof; return ""]
                                           ++ [try $ string s | (s, _) <- symbolTokens])
-                    return st) <?> ("keyword " ++ s)
+                    return st) <?> ("keyword " ++ str)
 
 symbolParser :: String -> Parser String
 symbolParser s = string s <?> ("symbol " ++ s)
@@ -52,14 +51,14 @@ symbolParsers = [try $ do
                    symbolParser s
                    return t
                  | (s, t) <- symbolTokens]
-                       
+
 keywordParsers :: [Parser Token]
 keywordParsers = [try $ do
                     whiteSpaceParser
                     keywordParser s
                     return t
-                  | (s, t) <- keywordTokens]                       
-         
+                  | (s, t) <- keywordTokens]
+
 tokenParser :: Parser Token
 tokenParser = choice $ [try numberParser]
               ++ keywordParsers

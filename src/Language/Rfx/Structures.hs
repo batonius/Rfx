@@ -1,23 +1,32 @@
 module Language.Rfx.Structures(Program(..), Thread(..),
-                               State(..), Operator(..),
+                               ThreadState(..), Operator(..),
                                Expr(..), Variable(..),
                                Statment(..))
 where
-  
+
 data Program = Program [Thread]
                deriving (Show, Eq)
-                        
-data Thread = Thread [State]
+
+data Thread = Thread
+    {
+        threadName :: String
+      , states :: [ThreadState]
+    }
               deriving (Show, Eq)
-                       
-data State = State [Statment]
+
+data ThreadState = ThreadState
+    {
+        stateName :: String
+      , statments :: [Statment]
+    }
              deriving (Show, Eq)
 
 data Operator = PlusOp
               | MinusOp
               | MulOp
+              | EualityOp
                 deriving (Show, Eq)
-                      
+
 data Expr = NumExpr Int
           | OpExp Operator Expr Expr
           | VarOp Variable
@@ -25,9 +34,8 @@ data Expr = NumExpr Int
 
 data Variable = Variable String
                 deriving (Show, Eq)
-            
-data Statment = Assign Variable Expr
-              | Block [Statment]
-              | If Expr Statment Statment
+
+data Statment = AssignSt Variable Expr
+              | BlockSt [Statment]
+              | IfSt Expr Statment Statment
                 deriving (Show, Eq)
-                
