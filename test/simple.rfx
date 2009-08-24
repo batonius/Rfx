@@ -1,7 +1,9 @@
 thread a where
   state aa where
+    a = 1;
   end;
   state aaa where
+    b = 2;
   end;
 end;
 

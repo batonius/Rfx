@@ -1,4 +1,4 @@
-ifeq ($(WINDIR),)
+ifeq ($strip($(WINDIR)),)
   FIND=find
 else
   FIND=xfind
