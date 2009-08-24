@@ -99,10 +99,10 @@ parserEmptyTest = "" `parserAssertStatment` []
 
 parserMultipleThreadsTest :: Assertion
 parserMultipleThreadsTest = do
-  "thread a where\n \
-  \  state aa where\n \
-  \  end;\n \
-  \end;\n \
+  "поток яЪ где\n \
+  \  состояние яЪ где\n \
+  \  конец;\n \
+  \конец;\n \
   \thread b where\n \
   \  state bb where\n \
   \  end;\n \
@@ -110,9 +110,9 @@ parserMultipleThreadsTest = do
   \  end;\n \
   \end;"
   `parserAssert`
-  Program [ Thread "A" [ThreadState "AA" []]
+  Program [ Thread "ЯЪ" [ThreadState "ЯЪ" []]
           , Thread "B" [ThreadState "BB" [], ThreadState "BBB" []]]
-
+  
 parserAssignStatmentTest :: Assertion
 parserAssignStatmentTest = do
   "var = 12;" `parserAssertStatment` [AssignSt (Variable "VAR") (NumExpr 12)]

@@ -1,15 +1,17 @@
 -- | Rfx main file
 import System.Environment(getArgs)
-
+import Prelude(($), IO)    
+import System.IO.UTF8
+    
 -- TODO remove unnessesary    
 import Language.Rfx.Compiler
-import Language.Rfx.Tokens()
-import Language.Rfx.Lexer()
-import Language.Rfx.Parser()
-import Language.Rfx.Structures()
+import Language.Rfx.Lexer
+import Language.Rfx.Parser
 
 main :: IO ()
 main = do
   (inFile:_) <- getArgs
-  inFileContent <- readFile inFile
-  print $ compileFile defaultCompilerOptions inFileContent
+  inFileString <- readFile inFile
+--  writeFile "out.c" $
+  putStrLn $ compileProgram defaultCompilerOptions $
+           parseProgram $ lexString inFileString

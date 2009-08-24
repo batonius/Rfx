@@ -1,0 +1,11 @@
+thread a where
+  state aa where
+  end;
+  state aaa where
+  end;
+end;
+
+поток яЁ где
+  состояние яЁ где
+  конец;
+конец;
