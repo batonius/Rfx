@@ -36,8 +36,9 @@ numberParser = do
 identifierParser :: Parser Token
 identifierParser = do
   whiteSpaceParser
-  idString <- many1 letter
-  return $ IdentifierToken idString
+  firstChar <- (letter <|> char '_')
+  idString <- many $ letter <|> digit <|> char '_'
+  return $ IdentifierToken (firstChar:idString)
 
 eofParser :: Parser Token
 eofParser = do

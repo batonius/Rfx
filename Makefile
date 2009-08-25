@@ -1,4 +1,4 @@
-ifeq ($strip($(WINDIR)),)
+ifeq ($(WINDIR),)
   FIND=find
 else
   FIND=xfind
@@ -7,12 +7,12 @@ endif
 all: rfx test
 
 rfx: src/rfx.hs src/Language/Rfx/*.hs
-	ghc -O2 --make -o rfx -Wall src/rfx.hs src/Language/Rfx/*.hs
+	ghc --make -o rfx -Wall src/rfx.hs src/Language/Rfx/*.hs
 
 test: rfx_test
 
 rfx_test: test/rfx_test.hs src/Language/Rfx/*.hs 
-	ghc -O2 --make -o rfx_test -Wall test/rfx_test.hs src/Language/Rfx/*.hs
+	ghc --make -o rfx_test -Wall test/rfx_test.hs src/Language/Rfx/*.hs
 
 clean:
 	$(FIND) ./ -name '*~' -type f -exec rm -f {} \;

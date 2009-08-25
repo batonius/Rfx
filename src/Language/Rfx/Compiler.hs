@@ -16,58 +16,60 @@ data CompilerOptions = CompilerOptions
 
 data CompilerState = CompilerState
                    {
-                     code :: String
-                   , options :: CompilerOptions
-                   , iterators :: Map.Map String Int
-                   , indent :: Int
+                     compilerCode :: String
+                   , compilerOptions :: CompilerOptions
+                   , compilerIterators :: Map.Map String Int
+                   , compilerIndent :: Int
                    } deriving (Eq, Show)
 
 type Compiler a = State CompilerState a
 
-addLine :: String -> Compiler ()
-addLine s = State (\state -> ((), state{code=(code state)
-                                          ++ (replicate (indent state) ' ')
-                                          ++ s
-                                          ++ "\n"}))
-
 addString :: String -> Compiler ()
-addString s = State (\state -> ((), state{code=(code state)++s}))
+addString s = State (\state -> ((), state{compilerCode=(compilerCode state)++s}))
 
 makeIndent :: Compiler ()
-makeIndent = State (\state -> ((), state{code=(code state)
-                                          ++ (replicate (indent state) ' ')}))
+makeIndent = State (\state -> ((), state{compilerCode=(compilerCode state)
+                                          ++ (replicate (compilerIndent state) ' ')}))
+
+addLine :: String -> Compiler ()
+addLine s = do
+  makeIndent
+  addString s
+  addString "\n"
 
 nextIterator :: String -> Compiler Int
 nextIterator s = State (\state ->
-                            let its = iterators state
-                                ret = its Map.! s in
-                            (ret, state{iterators=
-                                           ( Map.update (Just . (+1)) s its)}))
-
+                            let its = compilerIterators state in
+                            if Map.member s its then
+                                (its Map.! s, state{compilerIterators=
+                                                        Map.update (Just . (+1)) s its})
+                            else
+                                (0, state{compilerIterators=
+                                              Map.insert s 0 its}))
+                                         
 zeroIterator :: String -> Compiler ()
 zeroIterator s = State (\state ->
-                            let its = iterators state in
-                            ((), state{iterators=
+                            let its = compilerIterators state in
+                            ((), state{compilerIterators=
                                            (if Map.member s its then
                                                 Map.update (const $ Just 0) s its
                                             else
                                                 Map.insert s 0 its)}))
 
 addIndent :: Compiler ()
-addIndent = State (\state -> ((), state{indent=(indent state)+4}))
+addIndent = State (\state -> ((), state{compilerIndent=(compilerIndent state)+4}))
 
 subIndent :: Compiler ()
-subIndent = State (\state -> ((), state{indent=(indent state)-4}))
+subIndent = State (\state -> ((), state{compilerIndent=(compilerIndent state)-4}))
 
 defaultCompilerOptions :: CompilerOptions
 defaultCompilerOptions = CompilerOptions PIC
 
 compileProgram :: CompilerOptions -> Program -> String
-compileProgram op pr = code $ execState (programCompiler pr) $ CompilerState "" op Map.empty 0
+compileProgram op pr = compilerCode $ execState (programCompiler pr) $ CompilerState "" op Map.empty 0
 
 programCompiler :: Program -> Compiler ()
 programCompiler (Program threads) = do
-  zeroIterator "threadN"
   addLine "//Rfx was here"
   addLine $ "#define __RFX_THREAD_COUNT " ++ (show $ length threads)
   addLine $ "enum __rfx_threads {"
@@ -75,9 +77,9 @@ programCompiler (Program threads) = do
   sequence_ [do
               i <- nextIterator "threadN"
               addLine $ "__rfx_thread_"
-                            ++ (tlString stateName) ++ " = "
+                            ++ (tlString stName) ++ " = "
                             ++ (show i) ++ ","
-             | Thread stateName _ <- threads]
+             | Thread stName _ <- threads]
   subIndent
   addLine $ "};"
   sequence_ [do
@@ -116,12 +118,16 @@ stateCompiler thName state = do
   addLine "}"
 
 statmentCompiler :: Statment -> Compiler ()
-statmentCompiler (AssignSt (Variable varName) expr) = do
+statmentCompiler (AssignSt (Var vn _ _ _) expr) = do
   makeIndent
-  addString $ varName ++ " = "
-  exprCompile expr
+  addString $ vn ++ " = "
+  exprCompiler expr
   addString $ ";\n"
 
-exprCompile :: Expr -> Compiler ()
-exprCompile (NumExpr n) = do
+statmentCompiler _ = error "Not implemented yet"
+                     
+exprCompiler :: Expr -> Compiler ()
+exprCompiler (NumExpr n) = do
   addString $ show n
+
+exprCompiler _ = error "Not implemented yet"

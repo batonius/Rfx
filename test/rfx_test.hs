@@ -4,11 +4,12 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 import Test.HUnit
 
-import Language.Rfx.Compiler
+import Language.Rfx.Compiler() -- I can't test it here
 import Language.Rfx.Tokens
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
 import Language.Rfx.Structures
+import Language.Rfx.Util
 
 main :: IO ()
 main = do
@@ -76,7 +77,7 @@ lexerComplexIdentifierTest :: Assertion
 lexerComplexIdentifierTest = do
   "test1" `lexerAssert` [IdentifierToken "TEST1"]
   "t_e_s_12_" `lexerAssert` [IdentifierToken "T_E_S_12_"]
-  "12test12" `lexerAssert` [NumberToken 12, IdentifierToken "test12"]
+  "12test12" `lexerAssert` [NumberToken 12, IdentifierToken "TEST12"]
   "-_test_-" `lexerAssert` [MinusToken, IdentifierToken "_TEST_", MinusToken]
 
 lexerRussianTest :: Assertion
@@ -115,5 +116,4 @@ parserMultipleThreadsTest = do
   
 parserAssignStatmentTest :: Assertion
 parserAssignStatmentTest = do
-  "var = 12;" `parserAssertStatment` [AssignSt (Variable "VAR") (NumExpr 12)]
-  --TODO Add here more complex expressions
+  "int8 var = 0; var = 12;" `parserAssertStatment` [AssignSt (Var "VAR" (NumExpr 0) (InState "TH" "ST") Int8Type) (NumExpr 12)]

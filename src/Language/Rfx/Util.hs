@@ -1,6 +1,21 @@
-module Language.Rfx.Util(tlString)
+module Language.Rfx.Util(tlString, ProgramPos(..), posChild)
 where
+  
+data ProgramPos = InGlobal
+               | InThread String
+               | InState String String
+                 deriving (Show, Eq)
 
+-- Does b include a                          
+posChild :: ProgramPos -> ProgramPos -> Bool
+posChild a b = case b of
+                 InGlobal -> True
+                 InThread btn -> case a of
+                                  InThread atn -> atn == btn
+                                  InState atn _ -> atn == btn
+                                  InGlobal -> False
+                 InState _ _ -> a == b
+                                         
 tlString :: String -> String
 tlString = concat .  map transliterateChar
 
@@ -33,9 +48,9 @@ transliterateChar 'Ц' = "C"
 transliterateChar 'Ч' = "CH"
 transliterateChar 'Ш' = "SH"
 transliterateChar 'Щ' = "SH"
-transliterateChar 'Ъ' = ""
+transliterateChar 'Ъ' = "_"
 transliterateChar 'Ы' = "I"
-transliterateChar 'Ь' = ""
+transliterateChar 'Ь' = "_"
 transliterateChar 'Э' = "A"
 transliterateChar 'Ю' = "U"
 transliterateChar 'Я' = "YA"

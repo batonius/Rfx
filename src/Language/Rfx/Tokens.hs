@@ -16,6 +16,8 @@ data Token = NumberToken Int        -- Number
            | EndToken               -- "end"
            | SemicolonToken         -- ;
            | WhereToken             -- "where"
+           | BoolToken
+           | Int8Token
            | EOFToken
              deriving (Show, Eq)
 
