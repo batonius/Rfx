@@ -5,23 +5,23 @@ import Language.Rfx.Structures
 import Language.Rfx.Util
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Pos
-import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 data ParserState = ParserState
     {
-      parserVars :: Map.Map String Var
+      parserVars :: Set.Set Var
     , parserPos :: ProgramPos
     }
 
 defaultParserState :: ParserState                 
-defaultParserState = ParserState Map.empty InGlobal                   
+defaultParserState = ParserState Set.empty InGlobal                   
                    
 type TokenParser = GenParser Token ParserState
 
 parseProgram :: [Token] -> Program
 parseProgram ts = case runParser programParser defaultParserState "" ts of
                         Left err -> error $ "Lexer error\n" ++ show err
-                        Right t -> Program t
+                        Right p ->  p
 
 tokenTestParser :: (Token -> Bool) -> TokenParser Token
 tokenTestParser test = token showTok posFromTok testTok
@@ -43,10 +43,12 @@ numberParser = tokenTestParser(\x -> case x of
                                            (NumberToken _) -> True
                                            _ -> False)
 
-programParser :: TokenParser [Thread]
+programParser :: TokenParser Program
 programParser =do
   many $ try varDefParser
-  many threadParser
+  ths <- many threadParser
+  (ParserState vs _) <- getState
+  return $ Program ths vs
 
 varDefParser :: TokenParser ()
 varDefParser = do
@@ -110,20 +112,22 @@ addVar :: String -> Expr -> VarType -> TokenParser ()
 addVar vn iv vt = do
   (ParserState vars pos) <- getState
   state <- getState
-  if Map.member vn vars
-    then return $ error $ "Variable " ++ vn ++ " already defined\n"
+  let newVar = (Var vn iv pos vt)
+  if Set.member newVar vars
+    then return $ error $ "Variable " ++ vn ++ " already defined in this scope\n"
     else do
-      setState $ state{parserVars = Map.insert vn (Var vn iv pos vt) vars}
+      setState $ state{parserVars = Set.insert newVar vars}
               
 getVar :: String -> TokenParser Var
 getVar vn = do
   (ParserState vars pos) <- getState
-  let maybeVar = Map.lookup vn vars
-  case maybeVar of
-    Nothing -> error $ "Variable " ++ vn ++ " not defined yet\n"
-    Just var@(Var _ _ scope _) -> return $ if pos `posChild` scope
-                                      then var
-                                      else error $ "Variable " ++ vn ++ " not in this scope\n"
+  let filteredVars = Set.toList $ Set.filter (\(Var name _ vs _) ->
+                                                  (name==vn) && (pos `posChildOf` vs)) vars
+  case length filteredVars of
+    0 -> return $ error $ "Variable " ++ vn ++ " not defined in this context\n"
+    1 -> return $ head filteredVars
+    _ -> return $ error $ "You shouln't see this error message\n"
+        
 
 setParserPos :: ProgramPos -> TokenParser ()
 setParserPos pos = do

@@ -1,7 +1,7 @@
-int8 a = 0;
+int8 this_is_long_var = 100;
+
 thread a where
   state aa where
-    a = 1;
   end;
   state aaa where
     bool b = 0;

@@ -7,8 +7,13 @@ module Language.Rfx.Structures(Program(..), Thread(..),
 where
 import Language.Rfx.Util
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 
-data Program = Program [Thread]
+data Program = Program
+    {
+      programThreads :: [Thread]
+    , programVars :: Set.Set Var
+    }
                deriving (Show, Eq)
 
 data Thread = Thread
@@ -27,16 +32,16 @@ data Operator = PlusOp
               | MinusOp
               | MulOp
               | EualityOp
-                deriving (Show, Eq)
+                deriving (Show, Eq, Ord)
 
 data Expr = NumExpr Int
           | OpExpr Operator Expr Expr
           | VarExpr Var
-            deriving (Show, Eq)
+            deriving (Show, Eq, Ord)
 
 data VarType = Int8Type
              | BoolType
-               deriving (Show, Eq)
+               deriving (Show, Eq, Ord)
 
 getVarType :: String -> Maybe VarType
 getVarType s = Map.lookup s $ Map.fromList $
@@ -51,7 +56,7 @@ data Var = Var
     , varInitValue :: Expr
     , varScope :: ProgramPos
     , varType :: VarType
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, Ord)
 
 data Statment = AssignSt Var Expr
               | BlockSt [Statment]

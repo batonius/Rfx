@@ -1,14 +1,14 @@
-module Language.Rfx.Util(tlString, ProgramPos(..), posChild)
+module Language.Rfx.Util(tlString, ProgramPos(..), posChildOf)
 where
   
 data ProgramPos = InGlobal
                | InThread String
                | InState String String
-                 deriving (Show, Eq)
+                 deriving (Show, Eq, Ord)
 
 -- Does b include a                          
-posChild :: ProgramPos -> ProgramPos -> Bool
-posChild a b = case b of
+posChildOf :: ProgramPos -> ProgramPos -> Bool
+posChildOf a b = case b of
                  InGlobal -> True
                  InThread btn -> case a of
                                   InThread atn -> atn == btn
