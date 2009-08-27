@@ -4,6 +4,8 @@ where
 data Token = NumberToken Int        -- Number
            | PlusToken              -- +
            | MinusToken             -- -
+           | AsteriskToken          -- *
+           | SlashToken             -- /
            | LParToken              -- (
            | RParToken              -- )
            | EqualToken             -- ==
@@ -40,6 +42,8 @@ keywordTokens =
 symbolTokens :: [(String, Token)]
 symbolTokens = [ ("+", PlusToken)
                , ("-", MinusToken)
+               , ("*", AsteriskToken)
+               , ("/", SlashToken)
                , ("(", LParToken)
                , (")", RParToken)
                , ("==", EqualToken)

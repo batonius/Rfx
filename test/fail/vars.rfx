@@ -1,0 +1,23 @@
+bool global_var1 = 1;
+
+thread a where
+  bool th_var_1 = 1;
+  state aa where
+      state_var_1 = 5;
+  end;
+  state aaa where
+      int8 state_var_1 = 30;
+      int8 state_var_1 = 10;
+      state_var_1 = 3;
+      th_var_1 = 1000;
+  end;
+end;
+
+thread c where
+  bool th_var_1 = 100;
+  state cc where
+     int8 state_var_1 = 70;
+     th_var_1 = 4;
+     gl_var_2_ = 70;
+  end;
+end;

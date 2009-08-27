@@ -47,8 +47,8 @@ programParser :: TokenParser Program
 programParser =do
   many $ try varDefParser
   ths <- many threadParser
-  (ParserState vs _) <- getState
-  return $ Program ths vs
+  state <- getState
+  return $ Program ths $ parserVars state
 
 varDefParser :: TokenParser ()
 varDefParser = do
@@ -104,14 +104,54 @@ assignParser = do
 
 exprParser :: TokenParser Expr
 exprParser = do
+  expr <- choice [ try opExprParser
+                , try numExprParser
+                , try varExprParser
+                , try subExprParser]
+  return expr
+
+numExprParser :: TokenParser Expr
+numExprParser = do
   (NumberToken n) <- numberParser
   return $ NumExpr n
 
+subExprParser :: TokenParser Expr
+subExprParser = do
+  tokenParser LParToken
+  expr <- exprParser
+  tokenParser RParToken
+  return $ SubExpr expr 
+
+varExprParser :: TokenParser Expr
+varExprParser = do
+  (IdentifierToken vn) <- identifierParser
+  var <- getVar vn
+  return $ VarExpr var
+
+tokenOps :: [(Token, Oper)]
+tokenOps = [ (PlusToken, PlusOp)
+           , (MinusToken, MinusOp)
+           , (AsteriskToken, MulOp)
+           , (SlashToken, DivOp)]
+         
+opExprParser :: TokenParser Expr
+opExprParser = do
+  lexpr <- choice [try numExprParser
+                 , try varExprParser
+                 , try subExprParser]
+  op <- choice [try $ tokenParser tok
+                   | (tok, _) <- tokenOps]
+  rexpr <- exprParser
+  case lookup op tokenOps of
+    Nothing -> return $ error"Operator unknown\n"
+    Just o -> return $ OpExpr o lexpr rexpr
+         
 -- State funs
 addVar :: String -> Expr -> VarType -> TokenParser ()
 addVar vn iv vt = do
-  (ParserState vars pos) <- getState
   state <- getState
+  let vars = parserVars state
+  let pos = parserPos state
   let newVar = (Var vn iv pos vt)
   if Set.member newVar vars
     then return $ error $ "Variable " ++ vn ++ " already defined in this scope\n"
@@ -120,7 +160,9 @@ addVar vn iv vt = do
               
 getVar :: String -> TokenParser Var
 getVar vn = do
-  (ParserState vars pos) <- getState
+  state <- getState
+  let vars = parserVars state
+  let pos = parserPos state
   let filteredVars = Set.toList $ Set.filter (\(Var name _ vs _) ->
                                                   (name==vn) && (pos `posChildOf` vs)) vars
   case length filteredVars of
@@ -139,13 +181,14 @@ enterThread tn = setParserPos $ InThread tn
 
 enterState :: String -> TokenParser ()
 enterState stName = do
-  (ParserState _ (InThread thName)) <- getState
+  state <- getState
+  let (InThread thName) = (parserPos state)
   setParserPos $ InState thName stName
 
 leave :: TokenParser ()
 leave = do
-  (ParserState _ comPos) <- getState
   state <- getState
+  let comPos = parserPos state
   case comPos of
     InGlobal -> setParserPos InGlobal
     (InThread _) -> setParserPos InGlobal

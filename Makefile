@@ -4,7 +4,7 @@ else
   FIND=xfind
 endif
 
-all: rfx test
+all: rfx
 
 rfx: src/rfx.hs src/Language/Rfx/*.hs
 	ghc --make -o rfx -Wall src/rfx.hs src/Language/Rfx/*.hs

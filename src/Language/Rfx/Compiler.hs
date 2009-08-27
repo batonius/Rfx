@@ -103,10 +103,22 @@ statmentCompiler (AssignSt var expr) = do
 statmentCompiler _ = error "Not implemented yet"
                      
 exprCompiler :: Expr -> Compiler ()
-exprCompiler (NumExpr n) = do
-  addString $ show n
-
-exprCompiler _ = error "Not implemented yet"
+exprCompiler expr = case expr of
+                      (NumExpr n) -> addString $ (show n) ++ " "
+                      (SubExpr e) -> do
+                                addString "( "
+                                exprCompiler e
+                                addString ") "
+                      (VarExpr v) -> addString $ (getVarFullName v) ++ " "
+                      (OpExpr op le re) -> do
+                                exprCompiler le
+                                addString $ case op of
+                                              PlusOp  -> "+ "
+                                              MinusOp -> "- "
+                                              MulOp   -> "* "
+                                              DivOp   -> "/ "
+                                              _       -> ""
+                                exprCompiler re
 
 typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ case tp of

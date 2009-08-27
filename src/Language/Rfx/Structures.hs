@@ -1,5 +1,5 @@
 module Language.Rfx.Structures(Program(..), Thread(..),
-                               ThreadState(..), Operator(..),
+                               ThreadState(..), Oper(..),
                                Expr(..), Var(..),
                                Statment(..),
                                VarType(..),
@@ -28,15 +28,17 @@ data ThreadState = ThreadState
     , statments :: [Statment]
     } deriving (Show, Eq)
 
-data Operator = PlusOp
-              | MinusOp
-              | MulOp
-              | EualityOp
-                deriving (Show, Eq, Ord)
+data Oper = PlusOp
+          | MinusOp
+          | MulOp
+          | DivOp
+          | EualityOp
+            deriving (Show, Eq, Ord)
 
 data Expr = NumExpr Int
-          | OpExpr Operator Expr Expr
+          | OpExpr Oper Expr Expr
           | VarExpr Var
+          | SubExpr Expr
             deriving (Show, Eq, Ord)
 
 data VarType = Int8Type

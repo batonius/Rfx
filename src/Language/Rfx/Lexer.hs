@@ -32,7 +32,6 @@ numberParser = do
   numberString <- many1 digit
   return $ NumberToken (read numberString)
 
--- TODO Do it right
 identifierParser :: Parser Token
 identifierParser = do
   whiteSpaceParser

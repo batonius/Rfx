@@ -4,13 +4,18 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 import Test.HUnit
 import qualified Data.Set as Set
+import qualified Data.List as List
+import System.Directory
+import System.Cmd
+import System.Exit
+import System.IO.Unsafe
     
 import Language.Rfx.Compiler() -- I can't test it here
 import Language.Rfx.Tokens
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
 import Language.Rfx.Structures
-import Language.Rfx.Util()
+import Language.Rfx.Util
 
 main :: IO ()
 main = do
@@ -33,8 +38,16 @@ tests = [ testGroup "Tauto tests"
         , testGroup "Parser tests"
           [ testCase "Thread and state without statments" parserEmptyTest
           , testCase "Multiple threads program" parserMultipleThreadsTest
---          , testCase "Assing statment" parserAssignStatmentTest
-          ]]
+          , testCase "Assing statment" parserAssignStatmentTest
+          , testCase "Expression parsing" parserExprTest]
+        , testGroup "Success file test"
+          [ testCase ("File " ++ file) $ compileFileSuccessAssertion ("./test/succ/" ++ file)
+            | file <- filter (List.isSuffixOf ".rfx") $ unsafePerformIO $ getDirectoryContents "./test/succ"
+          ]
+        , testGroup "Fail file test"
+          [ testCase ("File " ++ file) $ compileFileFailAssertion ("./test/fail/" ++ file)
+            | file <- filter (List.isSuffixOf ".rfx") $ unsafePerformIO $ getDirectoryContents "./test/fail"
+          ]] -- ^ OMG How should i do it?
 
 tautoProp :: Int -> Property
 tautoProp x = odd x ==>
@@ -92,11 +105,20 @@ lexerRussianTest = do
 parserAssert :: String -> Program -> Assertion
 parserAssert s p = parseProgram (lexString s) @?= p
 
+varForTest :: Var
+varForTest = (Var "VAR" (NumExpr 0) InGlobal Int8Type)
+                   
 parserAssertStatment :: String -> [Statment] -> Assertion
-parserAssertStatment s stm = ("thread th where\nstate st where\n" ++ s ++"\nend;\nend;")
+parserAssertStatment s stm = ("int8 var = 0;thread th where\nstate st where\n" ++ s ++"\nend;\nend;")
                              `parserAssert`
-                             Program [Thread "TH" [ThreadState "ST" stm]] Set.empty
+                             Program [Thread "TH" [ThreadState "ST" stm]]
+                                         (Set.insert varForTest Set.empty)
 
+parserAssertExpr :: String -> Expr -> Assertion
+parserAssertExpr s e = ("var = " ++ s ++ ";")
+                       `parserAssertStatment`
+                       [AssignSt varForTest e]
+                                         
 parserEmptyTest :: Assertion
 parserEmptyTest = "" `parserAssertStatment` []
 
@@ -116,6 +138,28 @@ parserMultipleThreadsTest = do
   Program [ Thread "ЯЪ" [ThreadState "ЯЪ" []]
           , Thread "B" [ThreadState "BB" [], ThreadState "BBB" []]] Set.empty
   
--- parserAssignStatmentTest :: Assertion
--- parserAssignStatmentTest = do
---   "int8 var = 0; var = 12;" `parserAssertStatment` [AssignSt (Var "VAR" (NumExpr 0) (InState "TH" "ST") Int8Type) (NumExpr 12)]
+parserAssignStatmentTest :: Assertion
+parserAssignStatmentTest = do
+  "var = 12;" `parserAssertStatment` [AssignSt varForTest (NumExpr 12)]
+
+parserExprTest :: Assertion
+parserExprTest = do
+  "10" `parserAssertExpr` (NumExpr 10)
+  "10+3"  `parserAssertExpr` (OpExpr PlusOp (NumExpr 10) (NumExpr 3))
+  "var" `parserAssertExpr` (VarExpr varForTest)
+  "(1*1)-var" `parserAssertExpr` (OpExpr MinusOp
+                                  (SubExpr $ OpExpr MulOp (NumExpr 1) (NumExpr 1))
+                                  (VarExpr varForTest))
+
+--
+compileFileSuccessAssertion :: FilePath -> Assertion
+compileFileSuccessAssertion file = do
+  ec <- system ("./rfx " ++ file ++ " > out.c")
+  ec @?= ExitSuccess
+  ec2 <- system ("gcc -fsyntax-only -c out.c")
+  ec2 @?= ExitSuccess
+      
+compileFileFailAssertion :: FilePath -> Assertion
+compileFileFailAssertion file = do
+  ec <- system ("./rfx " ++ file ++ " > out.c")
+  assertBool "Rfx failed" (ec /= ExitSuccess)
