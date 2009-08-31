@@ -1,15 +1,11 @@
-ifeq ($(WINDIR),)
-  FIND=find
-else
-  FIND=xfind
-endif
+FIND=find
 
 all: rfx
 
 rfx: src/rfx.hs src/Language/Rfx/*.hs
 	ghc --make -o rfx -Wall src/rfx.hs src/Language/Rfx/*.hs
 
-test: rfx_test
+test: rfx rfx_test
 
 rfx_test: test/rfx_test.hs src/Language/Rfx/*.hs 
 	ghc --make -o rfx_test -Wall test/rfx_test.hs src/Language/Rfx/*.hs

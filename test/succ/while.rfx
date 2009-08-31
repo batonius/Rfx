@@ -1,0 +1,13 @@
+bool gv = 0;
+
+thread a where
+  state aa where
+    gv = 100;
+    while gv>0 do
+      gv = gv - 1;
+      if gv==10 then
+        break;
+      end;
+    end;
+  end;
+end;

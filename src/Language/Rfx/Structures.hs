@@ -32,7 +32,11 @@ data Oper = PlusOp
           | MinusOp
           | MulOp
           | DivOp
-          | EualityOp
+          | EqualityOp
+          | GrOp
+          | LsOp
+          | GrEqOp
+          | LsEqOp
             deriving (Show, Eq, Ord)
 
 data Expr = NumExpr Int
@@ -61,6 +65,9 @@ data Var = Var
     } deriving (Show, Eq, Ord)
 
 data Statment = AssignSt Var Expr
-              | BlockSt [Statment]
-              | IfSt Expr Statment Statment
+--              | BlockSt [Statment]
+              | IfSt Expr [Statment]
+              | IfElseSt Expr [Statment] [Statment]
+              | WhileSt Expr [Statment]
+              | BreakSt
                 deriving (Show, Eq)

@@ -93,6 +93,15 @@ stateCompiler thName state = do
   subIndent
   addLine "}"
 
+statmentsCompiler :: [Statment] -> Compiler ()
+statmentsCompiler sts = do
+  addLine "{"
+  addIndent
+  sequence_ [statmentCompiler statment
+             | statment <- sts]
+  subIndent
+  addLine "}"
+          
 statmentCompiler :: Statment -> Compiler ()
 statmentCompiler (AssignSt var expr) = do
   makeIndent
@@ -100,6 +109,27 @@ statmentCompiler (AssignSt var expr) = do
   exprCompiler expr
   addString $ ";\n"
 
+statmentCompiler (IfSt expr sts) = do
+  makeIndent
+  addString "if ("
+  exprCompiler expr
+  addString ")\n"
+  statmentsCompiler sts
+
+statmentCompiler (IfElseSt expr sts1 sts2) = do
+  statmentCompiler (IfSt expr sts1)
+  addLine "else"
+  statmentsCompiler sts2
+                    
+statmentCompiler (WhileSt expr sts) = do
+  makeIndent
+  addString "while ("
+  exprCompiler expr
+  addString ")\n"
+  statmentsCompiler sts
+
+statmentCompiler BreakSt = addLine "break;"
+            
 statmentCompiler _ = error "Not implemented yet"
                      
 exprCompiler :: Expr -> Compiler ()
@@ -113,11 +143,16 @@ exprCompiler expr = case expr of
                       (OpExpr op le re) -> do
                                 exprCompiler le
                                 addString $ case op of
-                                              PlusOp  -> "+ "
-                                              MinusOp -> "- "
-                                              MulOp   -> "* "
-                                              DivOp   -> "/ "
-                                              _       -> ""
+                                              PlusOp     -> "+ "
+                                              MinusOp    -> "- "
+                                              MulOp      -> "* "
+                                              DivOp      -> "/ "
+                                              EqualityOp -> "== "
+                                              GrOp       -> "> "
+                                              LsOp       -> "< "
+                                              GrEqOp     -> ">= "
+                                              LsEqOp     -> "<= "
+                                              _          -> ""
                                 exprCompiler re
 
 typeCompiler :: VarType -> Compiler ()

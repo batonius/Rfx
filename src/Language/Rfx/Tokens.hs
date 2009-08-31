@@ -9,15 +9,23 @@ data Token = NumberToken Int        -- Number
            | LParToken              -- (
            | RParToken              -- )
            | EqualToken             -- ==
+           | GrToken
+           | LsToken
+           | GrEqToken
+           | LsEqToken
            | AssignToken            -- =
            | IdentifierToken String -- Atom
            | ThreadToken            -- "thread"
            | StateToken             -- "state"
            | IfToken                -- "if"
+           | ThenToken              -- "then"
            | ElseToken              -- "else"
            | EndToken               -- "end"
            | SemicolonToken         -- ;
            | WhereToken             -- "where"
+           | WhileToken             -- "while"
+           | DoToken
+           | BreakToken             -- "break"
            | BoolToken
            | Int8Token
            | EOFToken
@@ -31,12 +39,20 @@ keywordTokens =
     , ("ELSE", ElseToken)
     , ("END", EndToken)
     , ("WHERE", WhereToken)
+    , ("THEN", ThenToken)
+    , ("WHILE", WhileToken)
+    , ("DO", DoToken)
+    , ("BREAK", BreakToken)
     , ("ПОТОК", ThreadToken)
     , ("СОСТОЯНИЕ", StateToken)
     , ("ЕСЛИ", IfToken)
     , ("ИНАЧЕ", ElseToken)
     , ("КОНЕЦ", EndToken)
-    , ("ГДЕ", WhereToken)]
+    , ("ГДЕ", WhereToken)
+    , ("ТОГДА", ThenToken)
+    , ("ПОКА", WhileToken)
+    , ("ДЕЛАЙ", DoToken)
+    , ("ПРЕРВАТЬ", BreakToken)]
 
 
 symbolTokens :: [(String, Token)]
@@ -48,4 +64,8 @@ symbolTokens = [ ("+", PlusToken)
                , (")", RParToken)
                , ("==", EqualToken)
                , ("=", AssignToken)
-               , (";", SemicolonToken)]
+               , (";", SemicolonToken)
+               , (">", GrToken)
+               , ("<", LsToken)
+               , (">=", GrEqToken)
+               , ("<=", LsEqToken)]

@@ -1,0 +1,18 @@
+bool gv = 1;
+
+thread a where
+  state aa where
+    gv = 1;
+    if gv==1 then
+      if gv+1 then
+        gv = 0;
+      else
+        gv = 3;
+      end;
+    else
+      if gv == 7 then
+        gv = 4;
+      end;
+    end;
+  end;
+end;

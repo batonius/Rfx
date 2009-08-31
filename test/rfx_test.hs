@@ -154,12 +154,14 @@ parserExprTest = do
 --
 compileFileSuccessAssertion :: FilePath -> Assertion
 compileFileSuccessAssertion file = do
-  ec <- system ("./rfx " ++ file ++ " > out.c")
+  curDir <- getCurrentDirectory
+  ec <- system (curDir++"/rfx " ++ file ++ " > out.c")
   ec @?= ExitSuccess
   ec2 <- system ("gcc -fsyntax-only -c out.c")
   ec2 @?= ExitSuccess
       
 compileFileFailAssertion :: FilePath -> Assertion
 compileFileFailAssertion file = do
-  ec <- system ("./rfx " ++ file ++ " > out.c")
+  curDir <- getCurrentDirectory
+  ec <- system (curDir++"/rfx " ++ file ++ " > out.c")
   assertBool "Rfx failed" (ec /= ExitSuccess)

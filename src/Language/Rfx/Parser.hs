@@ -90,10 +90,51 @@ stateParser = do
 
 statmentParser :: TokenParser Statment
 statmentParser = do
-  statment <- choice [try assignParser]
+  statment <- choice [ try assignParser
+                     , try breakParser
+                     , try whileParser
+                     , try ifParser]
   tokenParser SemicolonToken
   return statment
 
+breakParser :: TokenParser Statment
+breakParser = do
+  tokenParser BreakToken
+--  tokenParser SemicolonToken
+  return $ BreakSt
+
+whileParser :: TokenParser Statment
+whileParser = do
+  tokenParser WhileToken
+  expr <- exprParser
+  tokenParser DoToken
+  sts <- manyTill statmentParser $ do
+                tokenParser EndToken
+--                tokenParser SemicolonToken
+  return $ WhileSt expr sts
+
+ifParser :: TokenParser Statment
+ifParser = do
+  tokenParser IfToken
+  expr <- exprParser
+  tokenParser ThenToken
+  sts <- manyTill statmentParser $ choice [ lookAhead $ do
+                                              tokenParser EndToken 
+                                       --       tokenParser SemicolonToken
+                                          , lookAhead $ do
+                                              tokenParser ElseToken]
+  next <- choice [ do
+                   tokenParser EndToken
+          --         tokenParser SemicolonToken
+                 , tokenParser ElseToken]
+  if next /= ElseToken
+      then return $ IfSt expr sts
+      else do
+        sts2 <- manyTill statmentParser $ do
+                  tokenParser EndToken
+--                  tokenParser SemicolonToken
+        return $ IfElseSt expr sts sts2
+         
 assignParser :: TokenParser Statment
 assignParser = do
   (IdentifierToken vn) <- identifierParser
@@ -105,9 +146,9 @@ assignParser = do
 exprParser :: TokenParser Expr
 exprParser = do
   expr <- choice [ try opExprParser
-                , try numExprParser
-                , try varExprParser
-                , try subExprParser]
+                 , try numExprParser
+                 , try varExprParser
+                 , try subExprParser]
   return expr
 
 numExprParser :: TokenParser Expr
@@ -132,7 +173,12 @@ tokenOps :: [(Token, Oper)]
 tokenOps = [ (PlusToken, PlusOp)
            , (MinusToken, MinusOp)
            , (AsteriskToken, MulOp)
-           , (SlashToken, DivOp)]
+           , (SlashToken, DivOp)
+           , (EqualToken, EqualityOp)
+           , (GrToken, GrOp)
+           , (LsToken, LsOp)
+           , (GrEqToken, GrEqOp)
+           , (LsEqToken, LsEqOp)]
          
 opExprParser :: TokenParser Expr
 opExprParser = do
@@ -169,7 +215,6 @@ getVar vn = do
     0 -> return $ error $ "Variable " ++ vn ++ " not defined in this context\n"
     1 -> return $ head filteredVars
     _ -> return $ error $ "You shouln't see this error message\n"
-        
 
 setParserPos :: ProgramPos -> TokenParser ()
 setParserPos pos = do
