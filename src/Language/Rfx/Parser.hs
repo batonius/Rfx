@@ -100,7 +100,6 @@ statmentParser = do
 breakParser :: TokenParser Statment
 breakParser = do
   tokenParser BreakToken
---  tokenParser SemicolonToken
   return $ BreakSt
 
 whileParser :: TokenParser Statment
@@ -108,9 +107,7 @@ whileParser = do
   tokenParser WhileToken
   expr <- exprParser
   tokenParser DoToken
-  sts <- manyTill statmentParser $ do
-                tokenParser EndToken
---                tokenParser SemicolonToken
+  sts <- manyTill statmentParser $ tokenParser EndToken
   return $ WhileSt expr sts
 
 ifParser :: TokenParser Statment
@@ -118,27 +115,19 @@ ifParser = do
   tokenParser IfToken
   expr <- exprParser
   tokenParser ThenToken
-  sts <- manyTill statmentParser $ choice [ lookAhead $ do
-                                              tokenParser EndToken 
-                                       --       tokenParser SemicolonToken
-                                          , lookAhead $ do
-                                              tokenParser ElseToken]
-  next <- choice [ do
-                   tokenParser EndToken
-          --         tokenParser SemicolonToken
+  sts <- manyTill statmentParser $ choice [ lookAhead $ tokenParser EndToken 
+                                          , lookAhead $ tokenParser ElseToken]
+  next <- choice [ tokenParser EndToken
                  , tokenParser ElseToken]
   if next /= ElseToken
       then return $ IfSt expr sts
       else do
-        sts2 <- manyTill statmentParser $ do
-                  tokenParser EndToken
---                  tokenParser SemicolonToken
+        sts2 <- manyTill statmentParser $ tokenParser EndToken
         return $ IfElseSt expr sts sts2
          
 assignParser :: TokenParser Statment
 assignParser = do
-  (IdentifierToken vn) <- identifierParser
-  var <- getVar vn
+  var <- varParser
   tokenParser AssignToken
   expr <- exprParser
   return $ AssignSt var expr
@@ -165,8 +154,7 @@ subExprParser = do
 
 varExprParser :: TokenParser Expr
 varExprParser = do
-  (IdentifierToken vn) <- identifierParser
-  var <- getVar vn
+  var <- varParser
   return $ VarExpr var
 
 tokenOps :: [(Token, Oper)]
@@ -191,7 +179,20 @@ opExprParser = do
   case lookup op tokenOps of
     Nothing -> return $ error"Operator unknown\n"
     Just o -> return $ OpExpr o lexpr rexpr
-         
+
+varParser :: TokenParser Var
+varParser = do
+  varNameParts <- sepBy1 identifierParser (tokenParser DotToken)
+  case length varNameParts of
+    1 -> do
+      let (IdentifierToken varId) = head varNameParts
+      getVar varId
+    2 -> do
+      let (IdentifierToken thId) = head varNameParts
+      let (IdentifierToken varId) = varNameParts !! 1
+      return $ Var varId (NumExpr 0) (InThread thId) CheckMeType
+    _ -> return $ error "Too long variable name"
+             
 -- State funs
 addVar :: String -> Expr -> VarType -> TokenParser ()
 addVar vn iv vt = do
@@ -209,8 +210,8 @@ getVar vn = do
   state <- getState
   let vars = parserVars state
   let pos = parserPos state
-  let filteredVars = Set.toList $ Set.filter (\(Var name _ vs _) ->
-                                                  (name==vn) && (pos `posChildOf` vs)) vars
+  let filteredVars = Set.toList $ Set.filter (\var ->
+                                                  ((varName var)==vn) && (pos `posChildOf` (varScope var))) vars
   case length filteredVars of
     0 -> return $ error $ "Variable " ++ vn ++ " not defined in this context\n"
     1 -> return $ head filteredVars

@@ -139,7 +139,7 @@ exprCompiler expr = case expr of
                                 addString "( "
                                 exprCompiler e
                                 addString ") "
-                      (VarExpr v) -> addString $ (getVarFullName v) ++ " "
+                      (VarExpr v) -> varCompiler v
                       (OpExpr op le re) -> do
                                 exprCompiler le
                                 addString $ case op of
@@ -155,6 +155,17 @@ exprCompiler expr = case expr of
                                               _          -> ""
                                 exprCompiler re
 
+varCompiler :: Var -> Compiler ()
+varCompiler v = do
+  varToPring <- case varType v of
+                 CheckMeType -> do
+                                threadVars <- getVars $ varScope v
+                                case filter (\var -> (varName var) == (varName v)) threadVars of
+                                  [onlyVar] -> return onlyVar
+                                  _ -> error $ "No such var" ++ (varName v) ++ (show $ varScope v)
+                 _ -> return v
+  addString $ (getVarFullName v) ++ " "
+                                             
 typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ case tp of
                                 _ -> "int"

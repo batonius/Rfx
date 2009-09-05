@@ -12,10 +12,10 @@ main :: IO ()
 main = do
   (inFile:_) <- getArgs
   inFileString <- readFile inFile
-  let lexs = lexString inFileString
-  print lexs
-  let parse = parseProgram lexs
-  print parse
+  -- let lexs = lexString inFileString
+  -- print lexs
+  -- let parse = parseProgram lexs
+  -- print parse
 --  writeFile "out.c" $
   putStrLn $ compileProgram defaultCompilerOptions $
            parseProgram $ lexString inFileString

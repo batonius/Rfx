@@ -47,6 +47,7 @@ data Expr = NumExpr Int
 
 data VarType = Int8Type
              | BoolType
+             | CheckMeType -- Set it to get thread variable at compile time
                deriving (Show, Eq, Ord)
 
 getVarType :: String -> Maybe VarType
@@ -65,7 +66,6 @@ data Var = Var
     } deriving (Show, Eq, Ord)
 
 data Statment = AssignSt Var Expr
---              | BlockSt [Statment]
               | IfSt Expr [Statment]
               | IfElseSt Expr [Statment] [Statment]
               | WhileSt Expr [Statment]

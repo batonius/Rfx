@@ -13,6 +13,7 @@ data Token = NumberToken Int        -- Number
            | LsToken
            | GrEqToken
            | LsEqToken
+           | DotToken
            | AssignToken            -- =
            | IdentifierToken String -- Atom
            | ThreadToken            -- "thread"
@@ -62,10 +63,12 @@ symbolTokens = [ ("+", PlusToken)
                , ("/", SlashToken)
                , ("(", LParToken)
                , (")", RParToken)
+               , (">=", GrEqToken)
+               , ("<=", LsEqToken)
                , ("==", EqualToken)
                , ("=", AssignToken)
                , (";", SemicolonToken)
                , (">", GrToken)
                , ("<", LsToken)
-               , (">=", GrEqToken)
-               , ("<=", LsEqToken)]
+               , (".", DotToken)
+               ]

@@ -6,6 +6,7 @@ thread a where
   state aa where
       int8 state_var_1 = 10;
       state_var_1 = 5;
+      c.th_var_1 = 777;
   end;
   state aaa where
       int8 state_var_1 = 30;
@@ -19,6 +20,7 @@ thread c where
   state cc where
      int8 state_var_1 = 70;
      th_var_1 = 4;
+     a.th_var_1 = 888;
      gl_var_2_ = 70;
   end;
 end;
