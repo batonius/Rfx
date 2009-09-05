@@ -33,7 +33,9 @@ compileProgram :: CompilerOptions -> Program -> String
 compileProgram op pr@(Program _ vars) = compilerCode $ execState (programCompiler pr) $ CompilerState "" op Map.empty 0 vars
 
 programCompiler :: Program -> Compiler ()
-programCompiler (Program threads _) = do
+programCompiler program = do
+  let threads = programThreads program
+  let threadsLen = length threads
   addLine "//Rfx was here"
   addLine $ "#define __RFX_THREAD_COUNT " ++ (show $ length threads)
   addLine $ "enum __rfx_threads {"
@@ -41,9 +43,8 @@ programCompiler (Program threads _) = do
   zeroIterator "threadN"
   sequence_ [do
               i <- nextIterator "threadN"
-              addLine $ "__rfx_thread_"
-                            ++ (tlString (threadName thread)) ++ " = "
-                            ++ (show i) ++ ","
+              addLine $ (getThreadName thread) ++ " = "
+                          ++ (show i) ++ ","
              | thread <- threads]
   subIndent
   addLine $ "};"
@@ -54,9 +55,8 @@ programCompiler (Program threads _) = do
               addIndent
               sequence_ [do
                           i <- nextIterator "stateN"
-                          addLine $ "__rfx_state_" ++ thName ++ "_"
-                                        ++ (tlString $ stateName state)
-                                        ++ " = " ++ (show i) ++ ","
+                          addLine $ getStateName thread state 
+                                      ++ " = " ++ (show i) ++ ","
                          | state <- states thread]
               subIndent
               addLine $ "};"
@@ -70,13 +70,54 @@ programCompiler (Program threads _) = do
               sequence_ [ varDefenitionCompiler var
                               | var <- threadVars]
                   | thread <- threads]
-  --States          
+  -- States array
+  addLine $ "int __rfx_states[" ++ (show threadsLen)
+              ++ "] = {" ++ (concat $ map
+                                        (\th -> (getStateName th (head $ states th)) ++ ", ")
+                                        threads)
+              ++ "};"
+  addLine $ "int __rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
+  --States funs 
   sequence_ [do
               let thName = tlString $ threadName thread
               sequence_ [do
                           stateCompiler thName state
                           | state <- states thread]
              | thread <- threads]
+  --Main rfx fun
+  addLine "void __rfx_next()"
+  addLine "{"
+  addIndent
+  addLine $ "if (__rfx_cur_thread>" ++ (getThreadName $ last threads) ++ ")"
+  addIndent
+  addLine $ "__rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
+  subIndent
+  addLine "switch (__rfx_cur_thread)"
+  addLine "{"
+  addIndent
+  sequence_ [do
+              addLine $ (getThreadName thread ) ++ ":"
+              addIndent
+              addLine "switch (__rfx_states[__rfx_cur_thread])"
+              addLine "{"
+              addIndent
+              sequence_ [do
+                          addLine $ (getStateName thread state) ++ ":"
+                          addIndent
+                          addLine $ (getStateName thread state) ++ "_fun();"
+                          addLine "break;"
+                          subIndent
+                         | state <- states thread]
+              subIndent
+              addLine "}"
+              addLine "break;"
+              subIndent              
+              | thread <- threads]
+  subIndent
+  addLine "}"
+  addLine "__rfx_cur_thread++;"
+  subIndent
+  addLine "}"
 
 stateCompiler :: String -> ThreadState -> Compiler ()
 stateCompiler thName state = do
@@ -105,7 +146,8 @@ statmentsCompiler sts = do
 statmentCompiler :: Statment -> Compiler ()
 statmentCompiler (AssignSt var expr) = do
   makeIndent
-  addString $ (getVarFullName var) ++ " = "
+  varCompiler var
+  addString "= "
   exprCompiler expr
   addString $ ";\n"
 
@@ -157,14 +199,14 @@ exprCompiler expr = case expr of
 
 varCompiler :: Var -> Compiler ()
 varCompiler v = do
-  varToPring <- case varType v of
+  varToPrint <- case varType v of
                  CheckMeType -> do
                                 threadVars <- getVars $ varScope v
                                 case filter (\var -> (varName var) == (varName v)) threadVars of
                                   [onlyVar] -> return onlyVar
-                                  _ -> error $ "No such var" ++ (varName v) ++ (show $ varScope v)
+                                  _ -> return $ error $ "No such var " ++ (varName v) ++ " " ++ (show $ varScope v)
                  _ -> return v
-  addString $ (getVarFullName v) ++ " "
+  addString $ (getVarFullName varToPrint) ++ " "
                                              
 typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ case tp of
@@ -228,6 +270,12 @@ getVarFullName var = "__rfx_" ++ (case (varScope var) of
                                                     ++ (tlString sn) ++ "_")
                      ++ (tlString (varName var))
 
+getThreadName :: Thread -> String
+getThreadName th = "__rfx_thread_" ++ (tlString $ threadName th)
+
+getStateName :: Thread -> ThreadState -> String
+getStateName th st = "__rfx_state_" ++ (tlString $ threadName th) ++ "_" ++ (tlString $ stateName st)
+                        
 getVars :: ProgramPos -> Compiler [Var]
 getVars pos = State(\state -> 
                     (Set.toList $ Set.filter (\ var -> (varScope var) == pos) (compilerVars state),
