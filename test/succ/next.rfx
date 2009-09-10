@@ -1,0 +1,8 @@
+thread a where
+  state aa where
+        next aa;
+  end;
+  state aaa where
+        next aa;
+  end;
+end;

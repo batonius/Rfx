@@ -6,7 +6,7 @@ import Data.Char(toUpper)
 
 lexString :: String -> [Token]
 lexString s = case parse mainLexer "" (map toUpper s) of
-                Left err -> error $ "Lexer error\n" ++ show err
+                Left err -> error $ "Error\n" ++ show err
                 Right ts -> ts
 
 whiteSpaceCharParser :: Parser Char

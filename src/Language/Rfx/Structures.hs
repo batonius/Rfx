@@ -19,13 +19,13 @@ data Program = Program
 data Thread = Thread
     {
       threadName :: String
-    , states :: [ThreadState]
+    , threadStates :: [ThreadState]
     } deriving (Show, Eq)
 
 data ThreadState = ThreadState
     {
       stateName :: String
-    , statments :: [Statment]
+    , stateStatments :: [Statment]
     } deriving (Show, Eq)
 
 data Oper = PlusOp
@@ -69,5 +69,6 @@ data Statment = AssignSt Var Expr
               | IfSt Expr [Statment]
               | IfElseSt Expr [Statment] [Statment]
               | WhileSt Expr [Statment]
+              | NextSt ThreadState
               | BreakSt
                 deriving (Show, Eq)

@@ -14,6 +14,7 @@ data Token = NumberToken Int        -- Number
            | GrEqToken
            | LsEqToken
            | DotToken
+           | NextToken
            | AssignToken            -- =
            | IdentifierToken String -- Atom
            | ThreadToken            -- "thread"
@@ -43,6 +44,7 @@ keywordTokens =
     , ("THEN", ThenToken)
     , ("WHILE", WhileToken)
     , ("DO", DoToken)
+    , ("NEXT", NextToken)
     , ("BREAK", BreakToken)
     , ("ПОТОК", ThreadToken)
     , ("СОСТОЯНИЕ", StateToken)
@@ -53,8 +55,8 @@ keywordTokens =
     , ("ТОГДА", ThenToken)
     , ("ПОКА", WhileToken)
     , ("ДЕЛАЙ", DoToken)
-    , ("ПРЕРВАТЬ", BreakToken)]
-
+    , ("ПРЕРВАТЬ", BreakToken)
+    , ("ДАЛЬШЕ", NextToken)]
 
 symbolTokens :: [(String, Token)]
 symbolTokens = [ ("+", PlusToken)

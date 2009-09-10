@@ -91,9 +91,10 @@ stateParser = do
 statmentParser :: TokenParser Statment
 statmentParser = do
   statment <- choice [ try assignParser
-                     , try breakParser
-                     , try whileParser
-                     , try ifParser]
+                    , try breakParser
+                    , try whileParser
+                    , try ifParser
+                    , try nextParser]
   tokenParser SemicolonToken
   return statment
 
@@ -124,7 +125,13 @@ ifParser = do
       else do
         sts2 <- manyTill statmentParser $ tokenParser EndToken
         return $ IfElseSt expr sts sts2
-         
+
+nextParser :: TokenParser Statment
+nextParser = do
+  tokenParser NextToken
+  (IdentifierToken stateName) <- identifierParser
+  return $ NextSt $ ThreadState stateName []
+               
 assignParser :: TokenParser Statment
 assignParser = do
   var <- varParser
