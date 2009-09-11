@@ -184,31 +184,50 @@ statmentCompiler (NextSt nextState) = do
                    
 statmentCompiler BreakSt = addLine "break;"
 
+statmentCompiler (FunSt fun) = do
+  makeIndent
+  exprCompiler fun
+  addString ";\n"
+                           
 statmentCompiler _ = error "Not implemented yet"
 
 exprCompiler :: Expr -> Compiler ()
-exprCompiler expr = case expr of
-                      (NumExpr n) -> addString $ (show n) ++ " "
-                      (SubExpr e) -> do
-                                addString "( "
-                                exprCompiler e
-                                addString ") "
-                      (VarExpr v) -> varCompiler v
-                      (OpExpr op le re) -> do
-                                exprCompiler le
-                                addString $ case op of
-                                              PlusOp     -> "+ "
-                                              MinusOp    -> "- "
-                                              MulOp      -> "* "
-                                              DivOp      -> "/ "
-                                              EqualityOp -> "== "
-                                              GrOp       -> "> "
-                                              LsOp       -> "< "
-                                              GrEqOp     -> ">= "
-                                              LsEqOp     -> "<= "
-                                              _          -> ""
-                                exprCompiler re
+exprCompiler (NumExpr n) = addString $ (show n) ++ " "
+                           
+exprCompiler (SubExpr e) = do
+  addString "( "
+  exprCompiler e
+  addString ") "
+            
+exprCompiler (VarExpr v) = varCompiler v
+exprCompiler (OpExpr op le re) = do
+  exprCompiler le
+  addString $ case op of
+                PlusOp     -> "+ "
+                MinusOp    -> "- "
+                MulOp      -> "* "
+                DivOp      -> "/ "
+                EqualityOp -> "== "
+                GrOp       -> "> "
+                LsOp       -> "< "
+                GrEqOp     -> ">= "
+                LsEqOp     -> "<= "
+                _          -> ""
+  exprCompiler re
 
+exprCompiler (FunExpr funName args) = do
+  addString funName
+  addString "("
+  let addArg [] = addString ")"
+      addArg [a] = do
+        exprCompiler a
+        addString ")"
+      addArg (a:as) = do
+        exprCompiler a
+        addString ", "
+        addArg as
+  addArg args
+               
 varCompiler :: Var -> Compiler ()
 varCompiler v = do
   varToPrint <- case varType v of

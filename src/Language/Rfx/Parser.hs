@@ -94,7 +94,8 @@ statmentParser = do
                     , try breakParser
                     , try whileParser
                     , try ifParser
-                    , try nextParser]
+                    , try nextParser
+                    , try funParser]
   tokenParser SemicolonToken
   return statment
 
@@ -129,8 +130,8 @@ ifParser = do
 nextParser :: TokenParser Statment
 nextParser = do
   tokenParser NextToken
-  (IdentifierToken stateName) <- identifierParser
-  return $ NextSt $ ThreadState stateName []
+  (IdentifierToken stName) <- identifierParser
+  return $ NextSt $ ThreadState stName []
                
 assignParser :: TokenParser Statment
 assignParser = do
@@ -139,14 +140,28 @@ assignParser = do
   expr <- exprParser
   return $ AssignSt var expr
 
+funParser :: TokenParser Statment
+funParser = do
+  fun <- funExprParser
+  return $ FunSt fun
+         
 exprParser :: TokenParser Expr
 exprParser = do
   expr <- choice [ try opExprParser
-                 , try numExprParser
-                 , try varExprParser
-                 , try subExprParser]
+                , try numExprParser
+                , try funExprParser
+                , try varExprParser
+                , try subExprParser]
   return expr
 
+funExprParser :: TokenParser Expr
+funExprParser = do
+  (IdentifierToken funName) <- identifierParser
+  tokenParser LParToken
+  args <- sepBy exprParser (tokenParser CommaToken)
+  tokenParser RParToken
+  return $ FunExpr funName args  
+         
 numExprParser :: TokenParser Expr
 numExprParser = do
   (NumberToken n) <- numberParser

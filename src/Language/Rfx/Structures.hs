@@ -43,6 +43,7 @@ data Expr = NumExpr Int
           | OpExpr Oper Expr Expr
           | VarExpr Var
           | SubExpr Expr
+          | FunExpr String [Expr]
             deriving (Show, Eq, Ord)
 
 data VarType = Int8Type
@@ -71,4 +72,5 @@ data Statment = AssignSt Var Expr
               | WhileSt Expr [Statment]
               | NextSt ThreadState
               | BreakSt
+              | FunSt Expr -- Expr == FunExpr
                 deriving (Show, Eq)

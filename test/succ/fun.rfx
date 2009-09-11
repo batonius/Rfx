@@ -1,0 +1,8 @@
+thread a where
+  state aa where
+        fun(1, 2, 3+4);
+  end;
+  state aaa where
+        bool vr = fun2();
+  end;
+end;

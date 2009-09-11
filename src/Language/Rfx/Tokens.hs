@@ -27,6 +27,7 @@ data Token = NumberToken Int        -- Number
            | WhereToken             -- "where"
            | WhileToken             -- "while"
            | DoToken
+           | CommaToken
            | BreakToken             -- "break"
            | BoolToken
            | Int8Token
@@ -73,4 +74,5 @@ symbolTokens = [ ("+", PlusToken)
                , (">", GrToken)
                , ("<", LsToken)
                , (".", DotToken)
+               , (",", CommaToken)
                ]
