@@ -1,0 +1,23 @@
+Name:           Rfx
+Version:        0.1
+Cabal-Version:  >= 1.2
+License:        GPL
+Author:         Karavaev Egor
+Synopsis:       
+Build-Type:     Simple
+
+Executable rfx
+  Build-Depends:  utf8-string >= 0.3, parsec >= 3, containers >= 0.2, base >= 3, mtl >= 1.1
+  Main-Is:        rfx.hs
+  ghc-options:    -Wall
+  Hs-Source-Dirs: src
+
+--Executable rfx_test
+--  Build-Depends:  utf8-string >= 0.3, parsec >= 3, containers >= 0.2, base >= 3, mtl >= 1.1,
+--                  process >= 1, directory >= 1, HUnit >= 1.2, QuickCheck >= 2,
+--                  test-framework >= 0.2, test-framework-hunit >= 0.2, test-framework-quickcheck2 >= 0.2
+--  Main-Is:        rfx_test.hs
+--  ghc-options:    -Wall
+--  Hs-Source-Dirs: ./src ./test
+
+
