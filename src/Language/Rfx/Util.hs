@@ -18,7 +18,7 @@ posChildOf a b = case b of
                                          
 tlString :: String -> String
 tlString = concat .  map transliterateChar
-
+           
 -- quick'n'dirty                      
 transliterateChar :: Char -> String
 transliterateChar 'А' = "A"

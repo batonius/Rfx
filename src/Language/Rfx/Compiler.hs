@@ -325,4 +325,3 @@ getState stName = do
   case length states of
     1 -> return $ head states
     _ -> return $ error $ "No such state " ++ stName 
-                     
