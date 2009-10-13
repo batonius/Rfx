@@ -106,13 +106,16 @@ parserAssert :: String -> Program -> Assertion
 parserAssert s p = parseProgram (lexString s) @?= p
 
 varForTest :: Var
-varForTest = (Var "VAR" (NumExpr 0) InGlobal Int8Type)
+varForTest = (Var "VAR" (NumExpr 0) (InState "TH" "ST") CheckMeType)
+
+varForTestChecked :: Var
+varForTestChecked = varForTest {varType = Int8Type, varScope = InGlobal}
                    
 parserAssertStatment :: String -> [Statment] -> Assertion
 parserAssertStatment s stm = ("int8 var = 0;thread th where\nstate st where\n" ++ s ++"\nend;\nend;")
                              `parserAssert`
                              Program [Thread "TH" [ThreadState "ST" stm]]
-                                         (Set.insert varForTest Set.empty)
+                                         (Set.insert varForTestChecked Set.empty)
 
 parserAssertExpr :: String -> Expr -> Assertion
 parserAssertExpr s e = ("var = " ++ s ++ ";")

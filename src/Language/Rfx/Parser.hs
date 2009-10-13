@@ -13,14 +13,14 @@ data ParserState = ParserState
     , parserPos :: ProgramPos
     }
 
-defaultParserState :: ParserState                 
-defaultParserState = ParserState Set.empty InGlobal                   
-                   
+defaultParserState :: ParserState
+defaultParserState = ParserState Set.empty InGlobal
+
 type TokenParser = GenParser Token ParserState
 
 parseProgram :: [Token] -> Program
 parseProgram ts = case runParser programParser defaultParserState "" ts of
-                        Left err -> error $ "Lexer error\n" ++ show err
+                        Left err -> error $ "Parser error\n" ++ show err
                         Right p ->  p
 
 tokenTestParser :: (Token -> Bool) -> TokenParser Token
@@ -74,7 +74,7 @@ threadParser = do
                  tokenParser SemicolonToken
   leave
   return $ Thread thName sts
-         
+
 stateParser :: TokenParser ThreadState
 stateParser = do
   tokenParser StateToken
@@ -117,7 +117,7 @@ ifParser = do
   tokenParser IfToken
   expr <- exprParser
   tokenParser ThenToken
-  sts <- manyTill statmentParser $ choice [ lookAhead $ tokenParser EndToken 
+  sts <- manyTill statmentParser $ choice [ lookAhead $ tokenParser EndToken
                                           , lookAhead $ tokenParser ElseToken]
   next <- choice [ tokenParser EndToken
                  , tokenParser ElseToken]
@@ -132,7 +132,7 @@ nextParser = do
   tokenParser NextToken
   (IdentifierToken stName) <- identifierParser
   return $ NextSt $ ThreadState stName []
-               
+
 assignParser :: TokenParser Statment
 assignParser = do
   var <- varParser
@@ -144,7 +144,7 @@ funParser :: TokenParser Statment
 funParser = do
   fun <- funExprParser
   return $ FunSt fun
-         
+
 exprParser :: TokenParser Expr
 exprParser = do
   expr <- choice [ try opExprParser
@@ -160,8 +160,8 @@ funExprParser = do
   tokenParser LParToken
   args <- sepBy exprParser (tokenParser CommaToken)
   tokenParser RParToken
-  return $ FunExpr funName args  
-         
+  return $ FunExpr funName args
+
 numExprParser :: TokenParser Expr
 numExprParser = do
   (NumberToken n) <- numberParser
@@ -172,7 +172,7 @@ subExprParser = do
   tokenParser LParToken
   expr <- exprParser
   tokenParser RParToken
-  return $ SubExpr expr 
+  return $ SubExpr expr
 
 varExprParser :: TokenParser Expr
 varExprParser = do
@@ -189,7 +189,7 @@ tokenOps = [ (PlusToken, PlusOp)
            , (LsToken, LsOp)
            , (GrEqToken, GrEqOp)
            , (LsEqToken, LsEqOp)]
-         
+
 opExprParser :: TokenParser Expr
 opExprParser = do
   lexpr <- choice [try numExprParser
@@ -208,13 +208,14 @@ varParser = do
   case length varNameParts of
     1 -> do
       let (IdentifierToken varId) = head varNameParts
-      getVar varId
+      state <- getState
+      return $ Var varId (NumExpr 0) (parserPos state) CheckMeType
     2 -> do
       let (IdentifierToken thId) = head varNameParts
       let (IdentifierToken varId) = varNameParts !! 1
       return $ Var varId (NumExpr 0) (InThread thId) CheckMeType
     _ -> return $ error "Too long variable name"
-             
+
 -- State funs
 addVar :: String -> Expr -> VarType -> TokenParser ()
 addVar vn iv vt = do
@@ -226,24 +227,12 @@ addVar vn iv vt = do
     then return $ error $ "Variable " ++ vn ++ " already defined in this scope\n"
     else do
       setState $ state{parserVars = Set.insert newVar vars}
-              
-getVar :: String -> TokenParser Var
-getVar vn = do
-  state <- getState
-  let vars = parserVars state
-  let pos = parserPos state
-  let filteredVars = Set.toList $ Set.filter (\var ->
-                                                  ((varName var)==vn) && (pos `posChildOf` (varScope var))) vars
-  case length filteredVars of
-    0 -> return $ error $ "Variable " ++ vn ++ " not defined in this context\n"
-    1 -> return $ head filteredVars
-    _ -> return $ error $ "You shouln't see this error message\n"
 
 setParserPos :: ProgramPos -> TokenParser ()
 setParserPos pos = do
   state <- getState
   setState $ state{parserPos = pos}
-         
+
 enterThread :: String -> TokenParser ()
 enterThread tn = setParserPos $ InThread tn
 
@@ -261,4 +250,3 @@ leave = do
     InGlobal -> setParserPos InGlobal
     (InThread _) -> setParserPos InGlobal
     (InState thName _) -> setParserPos $ InThread thName
-

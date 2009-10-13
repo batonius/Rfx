@@ -2,7 +2,6 @@
 import System.Environment(getArgs)
 import Prelude(($), IO)    
 import System.IO.UTF8
-    
 -- TODO remove unnessesary    
 import Language.Rfx.Compiler
 import Language.Rfx.Lexer

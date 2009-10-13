@@ -9,61 +9,61 @@ lexString s = case parse mainLexer "" (map toUpper s) of
                 Left err -> error $ "Error\n" ++ show err
                 Right ts -> ts
 
-whiteSpaceCharParser :: Parser Char
-whiteSpaceCharParser = oneOf " \v\f\t\n" <?> "SPACE"
+whiteSpaceCharLexer :: Parser Char
+whiteSpaceCharLexer = oneOf " \v\f\t\n" <?> "SPACE"
 
-whiteSpaceParser :: Parser ()
-whiteSpaceParser = skipMany (whiteSpaceCharParser <?> "")
+whiteSpaceLexer :: Parser ()
+whiteSpaceLexer = skipMany (whiteSpaceCharLexer <?> "")
 
-keywordParser :: String -> Parser String
-keywordParser str = (do
+keywordLexer :: String -> Parser String
+keywordLexer str = (do
                     st <- string str
-                    lookAhead $ choice $ ([do try whiteSpaceCharParser; return ""]
+                    lookAhead $ choice $ ([do try whiteSpaceCharLexer; return ""]
                                           ++ [do try eof; return ""]
                                           ++ [try $ string s | (s, _) <- symbolTokens])
                     return st) <?> ("keyword " ++ str)
 
-symbolParser :: String -> Parser String
-symbolParser s = string s <?> ("symbol " ++ s)
+symbolLexer :: String -> Parser String
+symbolLexer s = string s <?> ("symbol " ++ s)
 
-numberParser :: Parser Token
-numberParser = do
-  whiteSpaceParser
+numberLexer :: Parser Token
+numberLexer = do
+  whiteSpaceLexer
   numberString <- many1 digit
   return $ NumberToken (read numberString)
 
-identifierParser :: Parser Token
-identifierParser = do
-  whiteSpaceParser
+identifierLexer :: Parser Token
+identifierLexer = do
+  whiteSpaceLexer
   firstChar <- (letter <|> char '_')
   idString <- many $ letter <|> digit <|> char '_'
   return $ IdentifierToken (firstChar:idString)
 
-eofParser :: Parser Token
-eofParser = do
-  whiteSpaceParser
+eofLexer :: Parser Token
+eofLexer = do
+  whiteSpaceLexer
   eof
   return $ EOFToken
 
-symbolParsers :: [Parser Token]
-symbolParsers = [try $ do
-                   whiteSpaceParser
-                   symbolParser s
+symbolLexers :: [Parser Token]
+symbolLexers = [try $ do
+                   whiteSpaceLexer
+                   symbolLexer s
                    return t
                  | (s, t) <- symbolTokens]
 
-keywordParsers :: [Parser Token]
-keywordParsers = [try $ do
-                    whiteSpaceParser
-                    keywordParser s
+keywordLexers :: [Parser Token]
+keywordLexers = [try $ do
+                    whiteSpaceLexer
+                    keywordLexer s
                     return t
                   | (s, t) <- keywordTokens]
 
-tokenParser :: Parser Token
-tokenParser = choice $ [try numberParser]
-              ++ keywordParsers
-              ++ symbolParsers
-              ++ [try identifierParser]
+tokenLexer :: Parser Token
+tokenLexer = choice $ [try numberLexer]
+              ++ keywordLexers
+              ++ symbolLexers
+              ++ [try identifierLexer]
 
 mainLexer :: Parser [Token]
-mainLexer = manyTill tokenParser $ try eofParser
+mainLexer = manyTill tokenLexer $ try eofLexer

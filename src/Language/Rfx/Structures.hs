@@ -13,15 +13,14 @@ data Program = Program
     {
       programThreads :: [Thread]
     , programVars :: Set.Set Var
-    }
-               deriving (Show, Eq)
+    } deriving (Show, Eq)
 
 data Thread = Thread
     {
       threadName :: String
     , threadStates :: [ThreadState]
     } deriving (Show, Eq)
-
+            
 data ThreadState = ThreadState
     {
       stateName :: String
