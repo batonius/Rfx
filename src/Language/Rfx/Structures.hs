@@ -20,7 +20,7 @@ data Thread = Thread
       threadName :: String
     , threadStates :: [ThreadState]
     } deriving (Show, Eq)
-            
+
 data ThreadState = ThreadState
     {
       stateName :: String
@@ -52,11 +52,11 @@ data VarType = Int8Type
 
 getVarType :: String -> Maybe VarType
 getVarType s = Map.lookup s $ Map.fromList $
-               [ ("INT8", Int8Type)
-               , ("BOOL", BoolType)
+               [ ("int8", Int8Type)
+               , ("bool", BoolType)
                , ("ЦЕЛ8", Int8Type)
                , ("ЛОГ", BoolType)]
-                        
+
 data Var = Var
     {
       varName :: String

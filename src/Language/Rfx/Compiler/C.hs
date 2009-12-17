@@ -3,7 +3,7 @@ where
 import Language.Rfx.Compiler.Common
 import Language.Rfx.Structures
 import Language.Rfx.Util
-    
+
 programCompiler :: Program -> Compiler ()
 programCompiler program = do
   let threads = programThreads program

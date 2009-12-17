@@ -3,7 +3,7 @@ int8 gl_var_2_ = 2;
 
 thread a where
   bool th_var_1 = 1;
-  state aa where
+  state aab where
       int8 state_var_1 = 10;
       state_var_1 = 5;
       c.th_var_1 = 777;

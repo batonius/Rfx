@@ -44,7 +44,7 @@ numberParser = tokenTestParser(\x -> case x of
                                            _ -> False)
 
 programParser :: TokenParser Program
-programParser =do
+programParser = do
   many $ try varDefParser
   ths <- many threadParser
   state <- getState
@@ -122,10 +122,10 @@ ifParser = do
   next <- choice [ tokenParser EndToken
                  , tokenParser ElseToken]
   if next /= ElseToken
-      then return $ IfSt expr sts
-      else do
-        sts2 <- manyTill statmentParser $ tokenParser EndToken
-        return $ IfElseSt expr sts sts2
+    then return $ IfSt expr sts
+    else do
+      sts2 <- manyTill statmentParser $ tokenParser EndToken
+      return $ IfElseSt expr sts sts2
 
 nextParser :: TokenParser Statment
 nextParser = do

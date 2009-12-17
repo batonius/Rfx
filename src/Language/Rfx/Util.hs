@@ -1,12 +1,12 @@
 module Language.Rfx.Util(tlString, ProgramPos(..), posChildOf)
 where
-  
+
 data ProgramPos = InGlobal
                | InThread String
                | InState String String
                  deriving (Show, Eq, Ord)
 
--- Does b include a                          
+-- Does b include a
 posChildOf :: ProgramPos -> ProgramPos -> Bool
 posChildOf a b = case b of
                  InGlobal -> True
@@ -15,12 +15,45 @@ posChildOf a b = case b of
                                   InState atn _ -> atn == btn
                                   InGlobal -> False
                  InState _ _ -> a == b
-                                         
+
 tlString :: String -> String
 tlString = concat .  map transliterateChar
-           
--- quick'n'dirty                      
+
+-- quick'n'dirty
 transliterateChar :: Char -> String
+transliterateChar 'а' = "A"
+transliterateChar 'б' = "B"
+transliterateChar 'в' = "V"
+transliterateChar 'г' = "G"
+transliterateChar 'д' = "D"
+transliterateChar 'е' = "E"
+transliterateChar 'ё' = "E"
+transliterateChar 'ж' = "ZH"
+transliterateChar 'z' = "Z"
+transliterateChar 'и' = "I"
+transliterateChar 'й' = "Y"
+transliterateChar 'к' = "K"
+transliterateChar 'л' = "L"
+transliterateChar 'м' = "M"
+transliterateChar 'н' = "N"
+transliterateChar 'о' = "O"
+transliterateChar 'п' = "P"
+transliterateChar 'р' = "R"
+transliterateChar 'с' = "C"
+transliterateChar 'т' = "T"
+transliterateChar 'у' = "U"
+transliterateChar 'ф' = "F"
+transliterateChar 'х' = "H"
+transliterateChar 'ц' = "C"
+transliterateChar 'ч' = "CH"
+transliterateChar 'ш' = "SH"
+transliterateChar 'щ' = "SH"
+transliterateChar 'ъ' = "_"
+transliterateChar 'ы' = "I"
+transliterateChar 'ь' = "_"
+transliterateChar 'э' = "A"
+transliterateChar 'ю' = "U"
+transliterateChar 'я' = "YA"
 transliterateChar 'А' = "A"
 transliterateChar 'Б' = "B"
 transliterateChar 'В' = "V"

@@ -15,7 +15,6 @@ compileProgram :: CompilerOptions -> Program -> String
 compileProgram op pr = let compiler = case compilerLanguage op of
                                         C -> C.programCompiler
                                         _ -> C.programCompiler
-                       in 
+                       in
                          compilerCode $ execState (compiler pr) $ CompilerState "" op Map.empty
                                           0 (programVars pr) (Thread "" [])
-

@@ -58,16 +58,16 @@ tautoTest = (1::Int) @?= (1::Int)
 
 -- Lexer tests
 lexerAssert :: String -> [Token] -> Assertion
-lexerAssert s t = lexString s @?= t
+lexerAssert s t = (map value $ lexString s) @?= t
 
 lexerEmptyTest :: Assertion
 lexerEmptyTest = "" `lexerAssert` []
 
 lexerPosNumProp :: Int -> Property
-lexerPosNumProp n = n>=0 ==> lexString (show n) == [NumberToken n]
+lexerPosNumProp n = n>=0 ==> (map value $ lexString (show n)) == [NumberToken n]
 
 lexerNegNumProp :: Int -> Property
-lexerNegNumProp n = n<0 ==> lexString (show n) == [MinusToken, NumberToken (abs n)]
+lexerNegNumProp n = n<0 ==> (map value $ lexString (show n)) == [MinusToken, NumberToken (abs n)]
 
 lexerKeywordsTest :: Assertion
 lexerKeywordsTest = sequence_ [s `lexerAssert` [t] | (s, t) <- keywordTokens]
@@ -79,34 +79,34 @@ lexerCaseInsensivityTest :: Assertion
 lexerCaseInsensivityTest = do
   " iF\n" `lexerAssert` [IfToken]
   "\tthReaD\n\f" `lexerAssert` [ThreadToken]
-  "  \t  \n someIdenTifier\n \f" `lexerAssert` [IdentifierToken "SOMEIDENTIFIER"]
+  "  \t  \n someIdenTifier\n \f" `lexerAssert` [IdentifierToken "someIdenTifier"]
 
 lexerMultiKeywordsTest :: Assertion
 lexerMultiKeywordsTest = do
   "if-thread" `lexerAssert` [IfToken, MinusToken, ThreadToken]
-  "ifthread" `lexerAssert` [IdentifierToken "IFTHREAD"]
+  "ifthread" `lexerAssert` [IdentifierToken "ifthread"]
   "if(thread)+state\tend" `lexerAssert` [IfToken, LParToken, ThreadToken, RParToken, PlusToken, StateToken, EndToken]
   "if\nthread\nstate" `lexerAssert` [IfToken, ThreadToken, StateToken]
 
 lexerComplexIdentifierTest :: Assertion
 lexerComplexIdentifierTest = do
-  "test1" `lexerAssert` [IdentifierToken "TEST1"]
-  "t_e_s_12_" `lexerAssert` [IdentifierToken "T_E_S_12_"]
-  "12test12" `lexerAssert` [NumberToken 12, IdentifierToken "TEST12"]
-  "-_test_-" `lexerAssert` [MinusToken, IdentifierToken "_TEST_", MinusToken]
+  "test1" `lexerAssert` [IdentifierToken "test1"]
+  "t_e_s_12_" `lexerAssert` [IdentifierToken "t_e_s_12_"]
+  "12test12" `lexerAssert` [NumberToken 12, IdentifierToken "test12"]
+  "-_tEst_-" `lexerAssert` [MinusToken, IdentifierToken "_tEst_", MinusToken]
 
 lexerRussianTest :: Assertion
 lexerRussianTest = do
-  "идентифер" `lexerAssert` [IdentifierToken "ИДЕНТИФЕР"]
-  "если переменная иначе чо конец" `lexerAssert` [IfToken, IdentifierToken "ПЕРЕМЕННАЯ", ElseToken,
-                                                  IdentifierToken "ЧО", EndToken]
+  "идентифер" `lexerAssert` [IdentifierToken "идентифер"]
+  "если переменная иначе чо конец" `lexerAssert` [IfToken, IdentifierToken "переменная", ElseToken,
+                                                  IdentifierToken "чо", EndToken]
 
 -- Parser tests
 parserAssert :: String -> Program -> Assertion
-parserAssert s p = parseProgram (lexString s) @?= p
+parserAssert s p = parseProgram (map value $ lexString s) @?= p
 
 varForTest :: Var
-varForTest = (Var "VAR" (NumExpr 0) (InState "TH" "ST") CheckMeType)
+varForTest = (Var "var" (NumExpr 0) (InState "th" "st") CheckMeType)
 
 varForTestChecked :: Var
 varForTestChecked = varForTest {varType = Int8Type, varScope = InGlobal}
@@ -114,7 +114,7 @@ varForTestChecked = varForTest {varType = Int8Type, varScope = InGlobal}
 parserAssertStatment :: String -> [Statment] -> Assertion
 parserAssertStatment s stm = ("int8 var = 0;thread th where\nstate st where\n" ++ s ++"\nend;\nend;")
                              `parserAssert`
-                             Program [Thread "TH" [ThreadState "ST" stm]]
+                             Program [Thread "th" [ThreadState "st" stm]]
                                          (Set.insert varForTestChecked Set.empty)
 
 parserAssertExpr :: String -> Expr -> Assertion
@@ -138,8 +138,8 @@ parserMultipleThreadsTest = do
   \  end;\n \
   \end;"
   `parserAssert`
-  Program [ Thread "ЯЪ" [ThreadState "ЯЪ" []]
-          , Thread "B" [ThreadState "BB" [], ThreadState "BBB" []]] Set.empty
+  Program [ Thread "яЪ" [ThreadState "яЪ" []]
+          , Thread "b" [ThreadState "bb" [], ThreadState "bbb" []]] Set.empty
   
 parserAssignStatmentTest :: Assertion
 parserAssignStatmentTest = do

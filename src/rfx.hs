@@ -1,8 +1,8 @@
 -- | Rfx main file
 import System.Environment(getArgs)
-import Prelude(($), IO)    
+import Prelude(($), IO, map)
 import System.IO.UTF8
--- TODO remove unnessesary    
+-- TODO remove unnessesary
 import Language.Rfx.Compiler
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
@@ -15,6 +15,7 @@ main = do
   -- print lexs
   -- let parse = parseProgram lexs
   -- print parse
---  writeFile "out.c" $
-  putStrLn $ compileProgram defaultCompilerOptions $
-           parseProgram $ lexString inFileString
+  -- writeFile "out.c" $
+  putStrLn $
+           compileProgram defaultCompilerOptions $
+           parseProgram $ map value $ lexString inFileString
