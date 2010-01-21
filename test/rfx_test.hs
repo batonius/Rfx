@@ -8,7 +8,6 @@ import qualified Data.List as List
 import System.Directory
 import System.Cmd
 import System.Exit
-import System.IO.Unsafe
     
 import Language.Rfx.Compiler() -- I can't test it here
 import Language.Rfx.Tokens
@@ -19,35 +18,36 @@ import Language.Rfx.Util
 
 main :: IO ()
 main = do
-  defaultMain tests
+  goodFiles <- getDirectoryContents "./test/succ"
+  badFiles <- getDirectoryContents "./test/fail"
+  let rfxFiles = filter (List.isSuffixOf ".rfx")
+  defaultMain $ tests (rfxFiles goodFiles) (rfxFiles badFiles)
 
-tests :: [Test.Framework.Test]
-tests = [ testGroup "Tauto tests"
-          [ testProperty "Tauto property" tautoProp
-          , testCase "Tauto test" tautoTest]
-        , testGroup "Lexer tests"
-          [ testCase "Empty lexer string => empty token list" lexerEmptyTest
-          , testProperty "Lexing positive numbers" lexerPosNumProp
-          , testProperty "Lexing negative numbers" lexerNegNumProp
-          , testCase "Keyword tokens lexing" lexerKeywordsTest
-          , testCase "Symbol tokens lexing" lexerSymbolsTest
-          , testCase "Case insentivity in lexer" lexerCaseInsensivityTest
-          , testCase "Keyword bounaries" lexerMultiKeywordsTest
-          , testCase "Complex identifiers" lexerComplexIdentifierTest
-          , testCase "Russian utf-8 identifiers" lexerRussianTest]
-        , testGroup "Parser tests"
-          [ testCase "Thread and state without statments" parserEmptyTest
-          , testCase "Multiple threads program" parserMultipleThreadsTest
-          , testCase "Assing statment" parserAssignStatmentTest
-          , testCase "Expression parsing" parserExprTest]
-        , testGroup "Success file test"
-          [ testCase ("File " ++ file) $ compileFileSuccessAssertion ("./test/succ/" ++ file)
-            | file <- filter (List.isSuffixOf ".rfx") $ unsafePerformIO $ getDirectoryContents "./test/succ"
-          ]
-        , testGroup "Fail file test"
-          [ testCase ("File " ++ file) $ compileFileFailAssertion ("./test/fail/" ++ file)
-            | file <- filter (List.isSuffixOf ".rfx") $ unsafePerformIO $ getDirectoryContents "./test/fail"
-          ]] -- ^ OMG How should i do it?
+tests :: [String] -> [String] -> [Test.Framework.Test]
+tests goodFiles badFiles = [ testGroup "Tauto tests"
+                             [ testProperty "Tauto property" tautoProp
+                             , testCase "Tauto test" tautoTest]
+                           , testGroup "Lexer tests"
+                             [ testCase "Empty lexer string => empty token list" lexerEmptyTest
+                             , testProperty "Lexing positive numbers" lexerPosNumProp
+                             , testProperty "Lexing negative numbers" lexerNegNumProp
+                             , testCase "Keyword tokens lexing" lexerKeywordsTest
+                             , testCase "Symbol tokens lexing" lexerSymbolsTest
+                             , testCase "Case insentivity in lexer" lexerCaseInsensivityTest
+                             , testCase "Keyword bounaries" lexerMultiKeywordsTest
+                             , testCase "Complex identifiers" lexerComplexIdentifierTest
+                             , testCase "Russian utf-8 identifiers" lexerRussianTest]
+                           , testGroup "Parser tests"
+                             [ testCase "Thread and state without statments" parserEmptyTest
+                             , testCase "Multiple threads program" parserMultipleThreadsTest
+                             , testCase "Assing statment" parserAssignStatmentTest
+                             , testCase "Expression parsing" parserExprTest]
+                           , testGroup "Success file test"
+                             [ testCase ("File " ++ file) $ compileFileSuccessAssertion ("./test/succ/" ++ file)
+                               | file <- goodFiles ]
+                           , testGroup "Fail file test"
+                             [ testCase ("File " ++ file) $ compileFileFailAssertion ("./test/fail/" ++ file)
+                                   | file <- badFiles]]
 
 tautoProp :: Int -> Property
 tautoProp x = odd x ==>
