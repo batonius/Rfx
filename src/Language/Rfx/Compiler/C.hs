@@ -8,7 +8,7 @@ programCompiler :: Program -> Compiler ()
 programCompiler program = do
   let threads = programThreads program
   let threadsLen = length threads
-  addLine "//Rfx was here LOL"
+  addLine "/*Rfx was here*/"
   addLine $ "#define __RFX_THREAD_COUNT " ++ (show $ threadsLen)
   addLine $ "enum __rfx_threads {"
   addIndent
@@ -94,7 +94,7 @@ programCompiler program = do
 stateCompiler :: String -> ThreadState -> Compiler ()
 stateCompiler thName state = do
   addLine "\nvoid"
-  addLine $ "__rfx_state_" ++ thName ++ "_"
+  addLine $ "__rfx_state__" ++ thName ++ "_"
                    ++ (tlString $ stateName state) ++ "_fun()"
   addLine "{"
   addIndent

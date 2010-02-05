@@ -160,7 +160,7 @@ compileFileSuccessAssertion file = do
   curDir <- getCurrentDirectory
   ec <- system (curDir++"/rfx " ++ file ++ " > out.c")
   ec @?= ExitSuccess
-  ec2 <- system ("gcc -fsyntax-only -c out.c")
+  ec2 <- system ("gcc -fsyntax-only -std=c89 -c out.c")
   ec2 @?= ExitSuccess
       
 compileFileFailAssertion :: FilePath -> Assertion

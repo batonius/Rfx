@@ -19,5 +19,3 @@ Executable rfx
 --  Main-Is:        rfx_test.hs
 --  ghc-options:    -Wall
 --  Hs-Source-Dirs: ./src ./test
-
-
