@@ -6,7 +6,7 @@ rfx: src/rfx.hs src/Language/Rfx/*.hs src/Language/Rfx/Compiler/*.hs
 #	cabal configure
 #	cabal build
 #	cp ./dist/build/rfx/rfx ./
-	ghc --make -o rfx -Wall src/rfx.hs src/Language/Rfx/*.hs src/Language/Rfx/Compiler/*.hs
+	ghc --make -o rfx src/rfx.hs src/Language/Rfx/*.hs src/Language/Rfx/Compiler/*.hs
 
 test: rfx rfx_test
 

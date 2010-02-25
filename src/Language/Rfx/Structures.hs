@@ -43,10 +43,12 @@ data Expr = NumExpr Int
           | VarExpr Var
           | SubExpr Expr
           | FunExpr String [Expr]
+          | StringExpr String
             deriving (Show, Eq, Ord)
 
 data VarType = Int8Type
              | BoolType
+             | StringType
              | CheckMeType -- Set it to get thread variable at compile time
                deriving (Show, Eq, Ord)
 
@@ -55,7 +57,9 @@ getVarType s = Map.lookup s $ Map.fromList $
                [ ("int8", Int8Type)
                , ("bool", BoolType)
                , ("ЦЕЛ8", Int8Type)
-               , ("ЛОГ", BoolType)]
+               , ("ЛОГ", BoolType)
+               , ("string", StringType)
+               , ("СТРОКА", StringType)]
 
 data Var = Var
     {

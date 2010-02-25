@@ -4,10 +4,12 @@ import Language.Rfx.Tokens
 import Text.ParserCombinators.Parsec
 import Data.Char(toUpper, toLower)
 
-data Tagged a = Tagged {
+data Tagged a = Tagged
+    {
       sourcePos :: SourcePos
-    , value :: a }
-              deriving (Show, Eq)
+    , value :: a
+    }
+                deriving (Show, Eq)
 
 lexString :: String -> [Tagged Token]
 lexString s = case parse mainLexer "" s of
@@ -47,6 +49,13 @@ numberLexer = taggedParser $ do
   numberString <- many1 digit
   return $ NumberToken (read numberString)
 
+stringLexer :: Parser (Tagged Token)
+stringLexer = taggedParser $ do
+  whiteSpaceLexer
+  char '\"'
+  string <- manyTill anyChar $ try $ char '\"'
+  return $ StringToken string
+         
 identifierLexer :: Parser (Tagged Token)
 identifierLexer = taggedParser $ do
   whiteSpaceLexer
@@ -77,7 +86,8 @@ keywordLexers = [try $ do
                   | (s, t) <- keywordTokens]
 
 tokenLexer :: Parser (Tagged Token)
-tokenLexer = choice $ [try numberLexer]
+tokenLexer = choice $ [try stringLexer
+                      ,try numberLexer]
               ++ keywordLexers
               ++ symbolLexers
               ++ [try identifierLexer]

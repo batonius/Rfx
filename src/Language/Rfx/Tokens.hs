@@ -2,15 +2,18 @@ module Language.Rfx.Tokens(Token(..), keywordTokens, symbolTokens)
 where
 import Text.ParserCombinators.Parsec(SourcePos)
 
-data Tagged a = Tagged {
+data Tagged a = Tagged
+    {
       sourcePos :: SourcePos
-    , value :: a }
+    , value :: a
+    }
                 deriving (Show)
 
 instance Eq a => Eq (Tagged a) where
     (Tagged _ x) == (Tagged _ y) = x == y
 
 data Token = NumberToken Int        -- Number
+           | StringToken String
            | PlusToken              -- +
            | MinusToken             -- -
            | AsteriskToken          -- *

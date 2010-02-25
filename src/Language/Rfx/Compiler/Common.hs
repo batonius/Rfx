@@ -7,7 +7,7 @@ import qualified Data.Set as Set
 import Language.Rfx.Structures
 import Language.Rfx.Util
 
-data CompilerTarget = PIC | ATM | DOS deriving (Eq, Show)
+data CompilerTarget = PIC | ARM | ANSI deriving (Eq, Show)
 data CompilerLanguage = C | Dot | ST | Python deriving (Eq, Show)
 data CompilerOptions = CompilerOptions
                      {

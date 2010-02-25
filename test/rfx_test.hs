@@ -36,7 +36,8 @@ tests goodFiles badFiles = [ testGroup "Tauto tests"
                              , testCase "Case insentivity in lexer" lexerCaseInsensivityTest
                              , testCase "Keyword bounaries" lexerMultiKeywordsTest
                              , testCase "Complex identifiers" lexerComplexIdentifierTest
-                             , testCase "Russian utf-8 identifiers" lexerRussianTest]
+                             , testCase "Russian utf-8 identifiers" lexerRussianTest
+                             , testCase "Strings lexing" lexerStringTest]
                            , testGroup "Parser tests"
                              [ testCase "Thread and state without statments" parserEmptyTest
                              , testCase "Multiple threads program" parserMultipleThreadsTest
@@ -100,7 +101,11 @@ lexerRussianTest = do
   "идентифер" `lexerAssert` [IdentifierToken "идентифер"]
   "если переменная иначе чо конец" `lexerAssert` [IfToken, IdentifierToken "переменная", ElseToken,
                                                   IdentifierToken "чо", EndToken]
-
+lexerStringTest :: Assertion
+lexerStringTest = do
+  "\"12\"12+" `lexerAssert` [StringToken "12", NumberToken 12, PlusToken]
+  "31\"_asf123'xzcv,.<>\"-" `lexerAssert` [NumberToken 31, StringToken "_asf123'xzcv,.<>", MinusToken]
+  
 -- Parser tests
 parserAssert :: String -> Program -> Assertion
 parserAssert s p = parseProgram (map value $ lexString s) @?= p

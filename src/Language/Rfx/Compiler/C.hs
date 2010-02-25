@@ -50,10 +50,9 @@ programCompiler program = do
   addLine $ "int __rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
   --States funs
   sequence_ [do
-              let thName = tlString $ threadName thread
               enterThread thread
               sequence_ [do
-                          stateCompiler thName state
+                          stateCompiler thread state
                           | state <- threadStates thread]
              | thread <- threads]
   --Main rfx fun
@@ -91,14 +90,13 @@ programCompiler program = do
   subIndent
   addLine "}"
 
-stateCompiler :: String -> ThreadState -> Compiler ()
-stateCompiler thName state = do
+stateCompiler :: Thread -> ThreadState -> Compiler ()
+stateCompiler thread state = do
   addLine "\nvoid"
-  addLine $ "__rfx_state__" ++ thName ++ "_"
-                   ++ (tlString $ stateName state) ++ "_fun()"
+  addLine $ (getStateName thread state) ++ "_fun()"
   addLine "{"
   addIndent
-  stateVars <- getVarsFromScope $ InState thName (stateName state)
+  stateVars <- getVarsFromScope $ InState (threadName thread) (stateName state)
   sequence_ [varDefenitionCompiler var | var <- stateVars]
   sequence_ [do
               statmentCompiler st
@@ -164,6 +162,8 @@ statmentCompiler _ = error "Not implemented yet"
 exprCompiler :: Expr -> Compiler ()
 exprCompiler (NumExpr n) = addString $ (show n) ++ " "
 
+exprCompiler (StringExpr s) = addString $ "\"" ++ s ++ "\""
+                           
 exprCompiler (SubExpr e) = do
   addString "( "
   exprCompiler e
@@ -205,6 +205,7 @@ varCompiler v = do
 
 typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ case tp of
+                                StringType -> "char*"
                                 _ -> "int"
 
 varDefenitionCompiler :: Var -> Compiler ()

@@ -43,6 +43,11 @@ numberParser = tokenTestParser(\x -> case x of
                                            (NumberToken _) -> True
                                            _ -> False)
 
+stringParser :: TokenParser Token
+stringParser = tokenTestParser(\x -> case x of
+                                      (StringToken _) -> True
+                                      _ -> False)
+                                           
 programParser :: TokenParser Program
 programParser = do
   many $ try varDefParser
@@ -151,7 +156,8 @@ exprParser = do
                 , try numExprParser
                 , try funExprParser
                 , try varExprParser
-                , try subExprParser]
+                , try subExprParser
+                , try stringExprParser]
   return expr
 
 funExprParser :: TokenParser Expr
@@ -167,6 +173,11 @@ numExprParser = do
   (NumberToken n) <- numberParser
   return $ NumExpr n
 
+stringExprParser :: TokenParser Expr
+stringExprParser = do
+  (StringToken s) <- stringParser
+  return $ StringExpr s
+         
 subExprParser :: TokenParser Expr
 subExprParser = do
   tokenParser LParToken

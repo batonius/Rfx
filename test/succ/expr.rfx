@@ -1,8 +1,10 @@
 bool gv = 1;
+string str = "abc";
 
 thread a where
   state aa where
         int8 i = 100-(12/3);
         gv = 10*(5)*i*gv;
+        str = "123";
   end;
 end;
