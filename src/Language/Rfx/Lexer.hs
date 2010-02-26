@@ -2,14 +2,8 @@ module Language.Rfx.Lexer (lexString, Tagged(..))
 where
 import Language.Rfx.Tokens
 import Text.ParserCombinators.Parsec
+import Control.Monad
 import Data.Char(toUpper, toLower)
-
-data Tagged a = Tagged
-    {
-      sourcePos :: SourcePos
-    , value :: a
-    }
-                deriving (Show, Eq)
 
 lexString :: String -> [Tagged Token]
 lexString s = case parse mainLexer "" s of
@@ -17,10 +11,7 @@ lexString s = case parse mainLexer "" s of
                 Right ts -> ts
 
 taggedParser :: Parser a -> Parser (Tagged a)
-taggedParser parser = do
-  pos <- getPosition
-  x <- parser
-  return (Tagged pos x)
+taggedParser parser = liftM2 Tagged getPosition parser
 
 whiteSpaceCharLexer :: Parser Char
 whiteSpaceCharLexer = oneOf " \v\f\t\n" <?> "SPACE"

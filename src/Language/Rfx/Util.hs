@@ -1,20 +1,5 @@
-module Language.Rfx.Util(tlString, ProgramPos(..), posChildOf)
+module Language.Rfx.Util(tlString)
 where
-
-data ProgramPos = InGlobal
-               | InThread String
-               | InState String String
-                 deriving (Show, Eq, Ord)
-
--- Does b include a
-posChildOf :: ProgramPos -> ProgramPos -> Bool
-posChildOf a b = case b of
-                 InGlobal -> True
-                 InThread btn -> case a of
-                                  InThread atn -> atn == btn
-                                  InState atn _ -> atn == btn
-                                  InGlobal -> False
-                 InState _ _ -> a == b
 
 tlString :: String -> String
 tlString = concat .  map transliterateChar

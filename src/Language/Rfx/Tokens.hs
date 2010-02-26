@@ -1,4 +1,4 @@
-module Language.Rfx.Tokens(Token(..), keywordTokens, symbolTokens)
+module Language.Rfx.Tokens(Token(..), keywordTokens, symbolTokens, Tagged(..))
 where
 import Text.ParserCombinators.Parsec(SourcePos)
 
