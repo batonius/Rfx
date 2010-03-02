@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies,FlexibleContexts #-}
 module Language.Rfx.Structures(Program(..),
                                Thread(..),
                                ThreadState(..),
@@ -7,6 +7,7 @@ module Language.Rfx.Structures(Program(..),
                                SynExpr(..),
                                SemExpr(..),
                                Var(..),
+                               Expression(..),
                                Statment(..),
                                VarType(..),
                                ProgramPos(..),
@@ -25,28 +26,22 @@ data (Expression e) => Var e = Var
     , varScope :: ProgramPos e
     , varType :: VarType
     } deriving (Show, Ord)
-
+                            
 instance (Expression e) => Eq (Var e) where
     (==) a b = (varName a) == (varName b)
-         
-class (Eq e) => Expression e where
-    data Variable e :: *
 
+data VarName = VarName String
+             | LongVarName String String
+               deriving (Eq, Ord, Show)
+               
 data SynExpr = NumSynExpr Int
-          | OpSynExpr SynOper SynExpr SynExpr
-          | VarSynExpr VarName
-          | SubSynExpr SynExpr
-          | FunSynExpr String [SynExpr]
-          | StringSynExpr String
-            deriving (Show, Eq, Ord)
+             | OpSynExpr SynOper SynExpr SynExpr
+             | VarSynExpr VarName
+             | SubSynExpr SynExpr
+             | FunSynExpr String [SynExpr]
+             | StringSynExpr String
+               deriving (Show, Eq, Ord)
 
-instance Expression SynExpr where
-    data Variable SynExpr = VarName String
-                          | LongVarName String String
-                            deriving (Eq, Ord, Show)
-
-type VarName = Variable SynExpr
-                               
 data SemExpr = NumSemExpr Int
              | OpSemExpr SemOper SemExpr SemExpr
              | VarSemExpr (Var SemExpr)
@@ -54,24 +49,11 @@ data SemExpr = NumSemExpr Int
              | FunSemExpr ()
              | StringSemExpr String
              deriving (Show, Eq, Ord)
-                      
-instance Expression SemExpr where
-    data Variable SemExpr = SemVar (Var SemExpr)
-                            deriving (Eq, Ord, Show)
           
 data (Expression e) => ProgramPos e = InGlobal
                                    | InThread (Thread e)
                                    | InState (Thread e) (ThreadState e)
                                      deriving (Show, Eq, Ord)
-
-posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
-posChildOf a b = case b of
-                 InGlobal -> True
-                 InThread btn -> case a of
-                                  InThread atn -> atn == btn
-                                  InState atn _ -> atn == btn
-                                  InGlobal -> False
-                 InState _ _ -> a == b
                                
 data (Expression e) => Program e = Program
     {
@@ -103,6 +85,8 @@ data SynOper = PlusSynOp
             deriving (Show, Eq, Ord)
 
 data SemOper = NumPlusSynOp
+             | NumMinusSynOp
+             | NumMulSynOp
              | TimePlusSynOp
              | StringPlusSynOp
              | NumMinuxSynOp
@@ -111,16 +95,9 @@ data SemOper = NumPlusSynOp
 data VarType = Int8Type
              | BoolType
              | StringType
+             | DateTimeType
+             | AnyType
                deriving (Show, Eq, Ord)
-
-getVarType :: String -> Maybe VarType
-getVarType s = Map.lookup s $ Map.fromList $
-               [ ("int8", Int8Type)
-               , ("bool", BoolType)
-               , ("ЦЕЛ8", Int8Type)
-               , ("ЛОГ", BoolType)
-               , ("string", StringType)
-               , ("СТРОКА", StringType)]
 
 data (Expression e) =>  Statment e = AssignSt (Variable e) e
     | IfSt e [Statment e]
@@ -130,3 +107,34 @@ data (Expression e) =>  Statment e = AssignSt (Variable e) e
     | BreakSt
     | FunSt e -- Expr == FunExpr
       deriving (Show, Eq, Ord)
+               
+class (Eq e
+      ,Eq (Variable e)
+      ,Ord (Variable e)
+      ,Show (Variable e)) => Expression e where
+    type Variable e :: *
+
+
+instance Expression SynExpr where
+    type Variable SynExpr = VarName
+                               
+instance Expression SemExpr where
+    type Variable SemExpr = Var SemExpr
+
+posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
+posChildOf a b = case b of
+                 InGlobal -> True
+                 InThread btn -> case a of
+                                  InThread atn -> atn == btn
+                                  InState atn _ -> atn == btn
+                                  InGlobal -> False
+                 InState _ _ -> a == b
+                               
+getVarType :: String -> Maybe VarType
+getVarType s = Map.lookup s $ Map.fromList $
+               [ ("int8", Int8Type)
+               , ("bool", BoolType)
+               , ("ЦЕЛ8", Int8Type)
+               , ("ЛОГ", BoolType)
+               , ("string", StringType)
+               , ("СТРОКА", StringType)]
