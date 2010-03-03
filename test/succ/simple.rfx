@@ -1,15 +1,9 @@
 int8 this_is_long_var = 100;
-
 thread a where
   state aa where
   end;
   state aaa where
-    bool b = 0;
+    int8 b = 0;
     b = 2;
   end;
 end;
-
-поток яЁ где
-  состояние яЁ где
-  конец;
-конец;

@@ -12,6 +12,8 @@ module Language.Rfx.Structures(Program(..),
                                VarType(..),
                                ProgramPos(..),
                                VarName(..),
+                               opTypes,
+                               semOpTypes,
                                posChildOf,
                                getVarType)
 where
@@ -65,31 +67,42 @@ data (Expression e) => Thread e = Thread
     {
       threadName :: String
     , threadStates :: [ThreadState e]
-    } deriving (Show, Eq, Ord)
+    } deriving (Show, Ord)
 
+instance Expression e => Eq (Thread e) where
+    (==) a b = (threadName a) == (threadName b)
+                               
 data (Expression e) => ThreadState e = ThreadState
     {
       stateName :: String
     , stateStatments :: [Statment e]
-    } deriving (Show, Eq, Ord)
+    } deriving (Show, Ord)
 
+instance Expression e => Eq (ThreadState e) where
+    (==) a b = (stateName a) == (stateName b)
+                                    
 data SynOper = PlusSynOp
           | MinusSynOp
           | MulSynOp
           | DivSynOp
-          | EqualitySynOp
+          | EqlSynOp
           | GrSynOp
           | LsSynOp
           | GrEqSynOp
           | LsEqSynOp
             deriving (Show, Eq, Ord)
 
-data SemOper = NumPlusSynOp
-             | NumMinusSynOp
-             | NumMulSynOp
-             | TimePlusSynOp
-             | StringPlusSynOp
-             | NumMinuxSynOp
+data SemOper = NumPlusSemOp
+             | NumMinusSemOp
+             | NumMulSemOp
+             | TimePlusSemOp
+             | StringPlusSemOp
+             | NumMinuxSemOp
+             | NumEqlSemOp
+             | NumNEqlSemOp
+             | NumGrSemOp
+             | NumLsSemOp
+             | NumDivSemOp
                deriving (Show, Eq, Ord)
                      
 data VarType = Int8Type
@@ -138,3 +151,27 @@ getVarType s = Map.lookup s $ Map.fromList $
                , ("ЛОГ", BoolType)
                , ("string", StringType)
                , ("СТРОКА", StringType)]
+
+opTypes :: Map.Map SynOper [SemOper]
+opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp])
+                       ,(MinusSynOp, [NumMinusSemOp])
+                       ,(MulSynOp, [NumMulSemOp])
+                       ,(DivSynOp, [NumDivSemOp])
+                       ,(EqlSynOp, [NumEqlSemOp])
+                       ,(GrSynOp, [NumGrSemOp])
+                       ,(LsSynOp, [NumLsSemOp])
+                       ,(GrEqSynOp, [])
+                       ,(LsEqSynOp, [])]
+
+
+semOpTypes :: [(SemOper, (VarType, VarType, VarType))]
+semOpTypes =[(NumPlusSemOp, (Int8Type, Int8Type, Int8Type))
+            ,(StringPlusSemOp, (StringType, StringType, StringType))
+            ,(NumMinusSemOp, (Int8Type, Int8Type, Int8Type))
+            ,(NumMulSemOp, (Int8Type, Int8Type, Int8Type))
+            ,(NumEqlSemOp, (Int8Type, Int8Type, BoolType))
+            ,(NumLsSemOp, (Int8Type, Int8Type, BoolType))
+            ,(NumGrSemOp, (Int8Type, Int8Type, BoolType))
+            ,(NumNEqlSemOp, (Int8Type, Int8Type, Int8Type))
+            ,(NumDivSemOp, (Int8Type, Int8Type, Int8Type))]
+                                  

@@ -1,10 +1,9 @@
-bool gv = 1;
-string str = "abc";
+int8 gv = 1;
 
 thread a where
   state aa where
         int8 i = 100-(12/3);
         gv = 10*(5)*i*gv;
-        str = "123";
+        i = gv + 1;
   end;
 end;

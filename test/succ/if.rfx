@@ -1,10 +1,10 @@
-bool gv = 1;
+int8 gv = 1;
 
 thread a where
   state aa where
     gv = 1;
     if gv==1 then
-      if gv+1 then
+    	if gv==2 then
         gv = 0;
       else
         gv = 3;

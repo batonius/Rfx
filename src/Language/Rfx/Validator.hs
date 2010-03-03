@@ -5,37 +5,50 @@ import Language.Rfx.Structures
 import qualified Data.Map as Map
 
 validateProgram :: Program SynExpr -> Program SemExpr
-validateProgram Program{programThreads, programVars} = Program{programThreads=[], programVars=[]}
-    -- let validatedVars = validateVars programVars in 
-    -- Program{programThreads = map (validateThread validatedVars) programThreads , programVars=[]}
+validateProgram Program{programThreads=prThs, programVars=prVrs} = program'
+    where program = Program{programVars=validateVars program prVrs
+                           ,programThreads=map (validateThread program) prThs}
+          program' = Program{programThreads=(programThreads program),
+                             programVars=replaceVars program (programVars program)}
 
-validateThread :: [Var SynExpr] -> Thread SynExpr -> Thread SemExpr
-validateThread vars Thread{threadName, threadStates} =
-    Thread{threadName, threadStates = map (validateState vars) threadStates}
+replaceVars :: Program SemExpr -> [Var SemExpr] -> [Var SemExpr]
+replaceVars pr [] = []
+replaceVars pr (var@(Var{varScope}):vars) = var{varScope=trScope pr varScope} : (replaceVars pr vars)
 
-validateState :: [Var SynExpr] -> ThreadState SynExpr -> ThreadState SemExpr
-validateState vars ThreadState{stateName, stateStatments} =
-    ThreadState{stateName, stateStatments = map (validateStatment vars) stateStatments}
+trScope pr InGlobal = InGlobal
+trScope pr (InThread Thread{threadName}) = InThread $ threadByName pr threadName
+trScope pr (InState Thread{threadName} ThreadState{stateName}) =
+    InState (threadByName pr threadName) (stateByName pr threadName stateName)
+    
+validateThread :: Program SemExpr -> Thread SynExpr -> Thread SemExpr
+validateThread pr Thread{threadName, threadStates} = thread
+    where thread = Thread{threadName, threadStates =
+                              map (validateState pr thread) threadStates}
 
-validateStatment :: [Var SynExpr] -> Statment SynExpr -> Statment SemExpr
-validateStatment _ _ = BreakSt
+validateState :: Program SemExpr -> Thread SemExpr -> ThreadState SynExpr -> ThreadState SemExpr
+validateState pr thread ThreadState{stateName, stateStatments} = state
+    where state = ThreadState{stateName, stateStatments =
+                                map (validateStatment pr (InState thread state)) stateStatments}
 
 validateVars :: Program SemExpr -> [Var SynExpr] -> [Var SemExpr]
 validateVars pr vars = validateVars' vars [] where
     validateVars' :: [Var SynExpr] -> [Var SemExpr] -> [Var SemExpr]
     validateVars' [] vVars = vVars
     validateVars' (var@Var{varScope, varInitValue,
-                           varType, varName}:uVars) vVars = let vInitVal = validateExpr pr InGlobal varInitValue
+                           varType, varName}:uVars) vVars = let pr' = Program{programThreads=[], programVars=vVars}
+                                                                vInitVal = validateExpr pr' InGlobal varInitValue
                                                                 vScope = transScope pr varScope in
-                                                            if (null $ usedVars vInitVal)
-                                                            && (typeOfExpr pr InGlobal vInitVal == varType)
-                                                            && (null $ filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars)
-                                                        then validateVars' uVars (Var{varName
+                                                            if (not.null) $ usedVars vInitVal
+                                                            then error "Using vars in var init"
+                                                            else if (typeOfExpr pr' InGlobal vInitVal /= varType)
+                                                            then error "Init value has wrong type"
+                                                            else if (not.null) $ filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
+                                                            then error "Var alrady exists"
+                                                            else validateVars' uVars (Var{varName
                                                                                      ,varType
                                                                                      ,varScope = vScope 
                                                                                      ,varInitValue = vInitVal}                                                                                                 
                                                                                   :vVars)
-                                                        else error "Var validate error"
                     
 usedVars :: SemExpr -> [Var SemExpr]
 usedVars (VarSemExpr var) = [var]
@@ -44,28 +57,37 @@ usedVars (SubSemExpr subExpr) = usedVars subExpr
 usedVars (FunSemExpr ()) = [] -- TODO
 usedVars _ = []
 
-typeOfExpr :: (Expression a) => Program a -> ProgramPos a -> a -> VarType
-typeOfExpr _ _ _ = Int8Type
+typeOfExpr :: Program SemExpr -> ProgramPos SemExpr -> SemExpr -> VarType
+typeOfExpr _ _ (NumSemExpr _) = Int8Type
+typeOfExpr _ _ (VarSemExpr Var{varType}) = varType
+typeOfExpr pr scope (SubSemExpr se) = typeOfExpr pr scope se
+typeOfExpr _ _ (StringSemExpr _) = StringType
+typeOfExpr _ _ (OpSemExpr semOp _ _) = opType
+    where (_ , (_, _, opType)) = let ops = filter ((==semOp).fst) semOpTypes in
+                                 if null ops then error $ "No such oper" ++ (show semOp)
+                                 else head ops
              
 scopeVars :: (Expression a) => ProgramPos a -> [Var a] -> [Var a]
-scopeVars scope = filter (\Var{varScope} -> varScope `posChildOf` scope)
+scopeVars scope = filter (\Var{varScope} -> scope `posChildOf` varScope)
 
 transScope :: Program SemExpr -> ProgramPos SynExpr -> ProgramPos SemExpr
 transScope _ InGlobal = InGlobal
-transScope pr (InThread Thread{threadName}) = InThread $ threadByName pr threadName
+transScope pr (InThread Thread{threadName}) = InThread $ Thread {threadName, threadStates=[]}
 transScope pr (InState Thread{threadName} ThreadState{stateName}) =
-    InState (threadByName pr threadName) (stateByName pr threadName stateName)
+    InState (Thread{threadName, threadStates=[]}) (ThreadState {stateName, stateStatments=[]})
                   
 threadByName :: Program SemExpr -> String -> Thread SemExpr
-threadByName Program{programThreads} thName = head $ filter (\Thread{threadName} -> threadName == thName) programThreads
+threadByName ~Program{programThreads} thName = head $ filter (\Thread{threadName} -> threadName == thName) programThreads
 
 stateByName :: Program SemExpr -> String -> String -> ThreadState SemExpr                                              
 stateByName pr thName stName = head $ filter (\ThreadState{stateName} -> stateName == stName) $ threadStates $ threadByName pr thName
                   
 varByName :: Program SemExpr -> ProgramPos SemExpr -> VarName -> Var SemExpr
-varByName pr@Program{programVars} scope varName = case varName of
-                                                 VarName vName -> head $ filter (\Var{varName=n} -> vName == n)
-                                                       $ scopeVars scope programVars
+varByName ~pr@Program{programVars} scope varName = case varName of
+                                                 VarName vName -> let vars = filter (\Var{varName=n} -> vName == n)
+                                                                            $ scopeVars scope programVars
+                                                                 in if null vars then error "No such var"
+                                                                    else head vars
                                                  LongVarName thName vName -> head $ filter (\Var{varName=n} -> vName == n)
                                                        $ scopeVars (InThread $ threadByName pr thName) programVars
                   
@@ -74,28 +96,42 @@ validateExpr pr _ (NumSynExpr n) = NumSemExpr n
 validateExpr pr _ (StringSynExpr s) = StringSemExpr s
 validateExpr pr scope (VarSynExpr varName) = VarSemExpr $ varByName pr scope varName
 validateExpr pr _ (FunSynExpr _ _ ) = FunSemExpr () -- TODO
--- validateExpr pr scope (OpSynExpr op lExpr rExpr) = let vlExpr = validateExpr pr scope lExpr
---                                                        vrExpr = validateExpr pr scope rExpr
---                                                        vlType = typeOfExpr pr scope vlExpr
---                                                        vrType = typeOfExpr pr scope vrExpr
---                                                        (Just synOps) = Map.lookup op opTypes 
---                                                    in
-                                                     
+validateExpr pr scope (SubSynExpr e) = SubSemExpr $ validateExpr pr scope e
+validateExpr pr scope (OpSynExpr op lExpr rExpr) = let vlExpr = validateExpr pr scope lExpr
+                                                       vrExpr = validateExpr pr scope rExpr
+                                                       vlType = typeOfExpr pr scope vlExpr
+                                                       vrType = typeOfExpr pr scope vrExpr
+                                                       (Just synOps) = Map.lookup op opTypes
+                                                       (semOp,_) = let ops = filter (\(so, (lt, rt, _)) ->
+                                                                                     (lt == vlType) && (rt == vrType) && (so `elem` synOps))
+                                                                              $ semOpTypes in
+                                                                   if null ops then error $ "No sem oper " ++ (show op)
+                                                                      else head ops
+                                                   in OpSemExpr semOp vlExpr vrExpr
 
-                                             
-opTypes :: Map.Map SynOper [SemOper]
-opTypes = Map.fromList [(PlusSynOp, [])
-                       ,(MinusSynOp, [])
-                       ,(DivSynOp, [])
-                       ,(EqualitySynOp, [])
-                       ,(GrSynOp, [])
-                       ,(LsSynOp, [])
-                       ,(GrEqSynOp, [])
-                       ,(LsEqSynOp, [])]
+validateStatment :: Program SemExpr -> ProgramPos SemExpr -> Statment SynExpr -> Statment SemExpr
+validateStatment pr scope (IfSt ex sts) = let valEx = validateExpr pr scope ex in
+                                          if (typeOfExpr pr scope valEx == BoolType)
+                                          then IfSt valEx $ map (validateStatment pr scope) sts
+                                          else error "Not bool if"
 
-semOpTypes :: Map.Map SemOper (VarType, VarType, VarType)
-semOpTypes = Map.fromList [ (NumPlusSynOp, (Int8Type, Int8Type, Int8Type))
-                           ,(StringPlusSynOp, (StringType, StringType, StringType))
-                           ,(NumMinusSynOp, (Int8Type, Int8Type, Int8Type))
-                           ,(NumMulSynOp, (Int8Type, Int8Type, Int8Type))]
-                                  
+validateStatment pr scope (IfElseSt ex ifSts elseSts) = let valEx = validateExpr pr scope ex in
+                                          if (typeOfExpr pr scope valEx == BoolType)
+                                          then IfElseSt valEx (map (validateStatment pr scope) ifSts)
+                                               (map (validateStatment pr scope) elseSts)
+                                          else error "Not bool if"
+                                               
+validateStatment _ _ BreakSt = BreakSt
+validateStatment pr ~(InState Thread{threadName} _) (NextSt (ThreadState{stateName})) = NextSt $ stateByName pr threadName stateName
+validateStatment pr scope (WhileSt ex sts) = let valEx = validateExpr pr scope ex in
+                                             if (typeOfExpr pr scope valEx == BoolType)
+                                             then WhileSt valEx $ map (validateStatment pr scope) sts
+                                             else error "Not bool while"
+
+validateStatment pr scope (AssignSt varName expr) = let valExpr = validateExpr pr scope expr
+                                                        valType = typeOfExpr pr scope valExpr
+                                                        var = varByName pr scope varName
+                                                    in if (varType var == valType)
+                                                       then AssignSt var valExpr
+                                                       else error "Wrong type"
+                                                  
