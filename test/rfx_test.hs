@@ -48,7 +48,8 @@ tests goodFiles badFiles = [ testGroup "Tauto tests"
                                | file <- goodFiles ]
                            , testGroup "Fail file test"
                              [ testCase ("File " ++ file) $ compileFileFailAssertion ("./test/fail/" ++ file)
-                                   | file <- badFiles]]
+                                   | file <- badFiles]
+                           ]
 
 tautoProp :: Int -> Property
 tautoProp x = odd x ==>
@@ -107,25 +108,25 @@ lexerStringTest = do
   "31\"_asf123'xzcv,.<>\"-" `lexerAssert` [NumberToken 31, StringToken "_asf123'xzcv,.<>", MinusToken]
   
 -- Parser tests
-parserAssert :: String -> Program -> Assertion
+parserAssert :: String -> Program SynExpr -> Assertion
 parserAssert s p = parseProgram (map value $ lexString s) @?= p
 
-varForTest :: Var
-varForTest = (Var "var" (NumExpr 0) (InState "th" "st") CheckMeType)
+varForTest :: Var SynExpr
+varForTest = (Var "var" (NumSynExpr 0) InGlobal Int8Type)
 
-varForTestChecked :: Var
-varForTestChecked = varForTest {varType = Int8Type, varScope = InGlobal}
+varNameForTest :: VarName
+varNameForTest = VarName "var"
                    
-parserAssertStatment :: String -> [Statment] -> Assertion
+parserAssertStatment :: String -> [Statment SynExpr] -> Assertion
 parserAssertStatment s stm = ("int8 var = 0;thread th where\nstate st where\n" ++ s ++"\nend;\nend;")
                              `parserAssert`
                              Program [Thread "th" [ThreadState "st" stm]]
-                                         (Set.insert varForTestChecked Set.empty)
+                                         [varForTest]
 
-parserAssertExpr :: String -> Expr -> Assertion
+parserAssertExpr :: String -> SynExpr -> Assertion
 parserAssertExpr s e = ("var = " ++ s ++ ";")
                        `parserAssertStatment`
-                       [AssignSt varForTest e]
+                       [AssignSt varNameForTest e]
                                          
 parserEmptyTest :: Assertion
 parserEmptyTest = "" `parserAssertStatment` []
@@ -144,22 +145,22 @@ parserMultipleThreadsTest = do
   \end;"
   `parserAssert`
   Program [ Thread "яЪ" [ThreadState "яЪ" []]
-          , Thread "b" [ThreadState "bb" [], ThreadState "bbb" []]] Set.empty
+          , Thread "b" [ThreadState "bb" [], ThreadState "bbb" []]] []
   
 parserAssignStatmentTest :: Assertion
 parserAssignStatmentTest = do
-  "var = 12;" `parserAssertStatment` [AssignSt varForTest (NumExpr 12)]
+  "var = 12;" `parserAssertStatment` [AssignSt varNameForTest (NumSynExpr 12)]
 
 parserExprTest :: Assertion
 parserExprTest = do
-  "10" `parserAssertExpr` (NumExpr 10)
-  "10+3"  `parserAssertExpr` (OpExpr PlusOp (NumExpr 10) (NumExpr 3))
-  "var" `parserAssertExpr` (VarExpr varForTest)
-  "(1*1)-var" `parserAssertExpr` (OpExpr MinusOp
-                                  (SubExpr $ OpExpr MulOp (NumExpr 1) (NumExpr 1))
-                                  (VarExpr varForTest))
+  "10" `parserAssertExpr` (NumSynExpr 10)
+  "10+3"  `parserAssertExpr` (OpSynExpr PlusSynOp (NumSynExpr 10) (NumSynExpr 3))
+  "var" `parserAssertExpr` (VarSynExpr varNameForTest)
+  "(1*1)-var" `parserAssertExpr` (OpSynExpr MinusSynOp
+                                  (SubSynExpr $ OpSynExpr MulSynOp (NumSynExpr 1) (NumSynExpr 1))
+                                  (VarSynExpr varNameForTest))
 
---
+-- --
 compileFileSuccessAssertion :: FilePath -> Assertion
 compileFileSuccessAssertion file = do
   curDir <- getCurrentDirectory

@@ -1,22 +1,27 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | Rfx main file
 import System.Environment(getArgs)
-import Prelude(($), IO, map, show)
+import Prelude(($), IO, map, show, (++))
 import System.IO.UTF8
 -- TODO remove unnessesary
 import Language.Rfx.Compiler
 import Language.Rfx.Validator
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
+import Language.Rfx.Error
+import Control.Exception
 
-prog = "int8 x = 0;thread a where state aa where x = 10 + (12 * 10); end; end;"
-lexed = lexString prog
-parsed = parseProgram $ map value $ lexed
-validated = validateProgram parsed
-    
+compileFile inFile = do
+  putStrLn $
+           compileProgram defaultCompilerOptions $ validateProgram $ 
+           parseProgram $ lexString inFile
+            
 main :: IO ()
 main = do
   (inFile:_) <- getArgs
   inFileString <- readFile inFile
-  putStrLn $
-           compileProgram defaultCompilerOptions $ validateProgram $ 
-           parseProgram $ map value $ lexString inFileString
+  (compileFile inFileString) `catch`
+       (\ (ex::RfxException) -> putStrLn $ "Lol i catch: " ++ (show ex))
+  -- putStrLn $
+  --          compileProgram defaultCompilerOptions $ validateProgram $ 
+  --          parseProgram $ map value $ lexString inFileString

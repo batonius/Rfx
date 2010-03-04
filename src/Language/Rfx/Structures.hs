@@ -18,6 +18,7 @@ module Language.Rfx.Structures(Program(..),
                                getVarType)
 where
 import Language.Rfx.Util
+import Text.ParserCombinators.Parsec(SourcePos)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -27,6 +28,7 @@ data (Expression e) => Var e = Var
     , varInitValue :: e
     , varScope :: ProgramPos e
     , varType :: VarType
+    , varSourcePos :: SourcePos
     } deriving (Show, Ord)
                             
 instance (Expression e) => Eq (Var e) where

@@ -3,14 +3,16 @@ where
 import Language.Rfx.Tokens
 import Language.Rfx.Structures
 import Language.Rfx.Util
+import Language.Rfx.Error
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Pos
+import Control.Exception hiding (try)
 
-type TokenParser = GenParser Token [Var SynExpr] -- ParserState
+type TokenParser = GenParser (Tagged Token) [Var SynExpr] -- ParserState
 
-parseProgram :: [Token] -> Program SynExpr
+parseProgram :: [Tagged Token] -> Program SynExpr
 parseProgram ts = case runParser programParser [] "" ts of
-                        Left err -> error $ "Parser error\n" ++ show err
+                        Left err -> throw $ SynException err
                         Right p ->  p
                                    
 programParser :: TokenParser (Program SynExpr)
@@ -27,7 +29,8 @@ addVars vars = do
                         
 varDefParser :: TokenParser (Var SynExpr)
 varDefParser = do
-  (IdentifierToken varTypeName) <- identifierParser
+  (Tagged pos (IdentifierToken varTypeName)) <- taggedIdentifierParser
+  setPosition pos
   (IdentifierToken vn) <- identifierParser
   tokenParser AssignToken
   initExpr <- exprParser
@@ -38,7 +41,8 @@ varDefParser = do
       return Var{varName=vn
                 ,varType=tp
                 ,varInitValue=initExpr
-                ,varScope=InGlobal}
+                ,varScope=InGlobal
+                ,varSourcePos=pos}
 
 threadParser :: TokenParser (Thread SynExpr)
 threadParser = do
@@ -207,7 +211,16 @@ tokenTestParser test = token showTok posFromTok testTok
     where
       showTok t = show t
       posFromTok _ = newPos "" 0 0
-      testTok t = if test t then Just t else Nothing
+      testTok :: (Tagged Token) -> Maybe Token
+      testTok t = if (test.value) t then Just (value t) else Nothing
+
+taggedTokenTestParser :: (Token -> Bool) -> TokenParser (Tagged Token)
+taggedTokenTestParser test = token showTok posFromTok testTok
+    where
+      showTok t = show t
+      posFromTok _ = newPos "" 0 0
+      testTok :: (Tagged Token) -> Maybe (Tagged Token)
+      testTok t = if (test.value) t then Just t else Nothing
 
 tokenParser :: Token -> TokenParser Token
 tokenParser t = tokenTestParser (==t)
@@ -217,6 +230,11 @@ identifierParser = tokenTestParser (\x -> case x of
                                            (IdentifierToken _) -> True
                                            _ -> False)
 
+taggedIdentifierParser :: TokenParser (Tagged Token)
+taggedIdentifierParser = taggedTokenTestParser (\x -> case x of
+                                                     (IdentifierToken _) -> True
+                                                     _ -> False)
+                                                
 numberParser :: TokenParser Token
 numberParser = tokenTestParser(\x -> case x of
                                            (NumberToken _) -> True

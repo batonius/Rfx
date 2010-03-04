@@ -1,13 +1,15 @@
 module Language.Rfx.Lexer (lexString, Tagged(..))
 where
 import Language.Rfx.Tokens
+import Language.Rfx.Error
 import Text.ParserCombinators.Parsec
 import Control.Monad
+import Control.Exception hiding (try)
 import Data.Char(toUpper, toLower)
 
 lexString :: String -> [Tagged Token]
 lexString s = case parse mainLexer "" s of
-                Left err -> error $ "Error\n" ++ show err
+                Left err -> throw $ LexException err
                 Right ts -> ts
 
 taggedParser :: Parser a -> Parser (Tagged a)
