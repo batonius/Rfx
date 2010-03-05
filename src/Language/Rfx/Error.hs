@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification,NamedFieldPuns,DeriveDataTypeable #-}
 module Language.Rfx.Error where
 import Control.Exception
+import Language.Rfx.Structures
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Error
 import Data.Typeable
@@ -47,4 +48,17 @@ instance Exception SynException where
      fromException = rfxExceptionFromException
 
 instance Show SynException where
-    show (SynException pe) = "Syn error " ++ (show pe)
+    show (SynException pe) = "Syn error: " ++ (parsecMessage $ head $ errorMessages pe)
+
+data SemException = VarInVarInitSemExc (Var SynExpr)
+                  | VarInitWrongTypeSemExc (Var SynExpr)
+                  | VarAlreadyExistsSemExc (Var SynExpr)
+                  | IfNotBoolSemExc (Statment SynExpr)
+                  | WhileNotBoolSemExc (Statment SynExpr)
+                  | AssignWrongType (Statment SynExpr)
+                  | OpSemExc SynExpr
+                    deriving (Typeable, Show)
+
+instance Exception SemException where
+    toException = rfxExceptionToException
+    fromException = rfxExceptionFromException

@@ -22,6 +22,3 @@ main = do
   inFileString <- readFile inFile
   (compileFile inFileString) `catch`
        (\ (ex::RfxException) -> putStrLn $ "Lol i catch: " ++ (show ex))
-  -- putStrLn $
-  --          compileProgram defaultCompilerOptions $ validateProgram $ 
-  --          parseProgram $ map value $ lexString inFileString

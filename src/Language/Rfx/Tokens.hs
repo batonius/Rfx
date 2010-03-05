@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Language.Rfx.Tokens(Token(..), keywordTokens, symbolTokens, Tagged(..))
 where
 import Text.ParserCombinators.Parsec(SourcePos)
@@ -7,7 +8,9 @@ data Tagged a = Tagged
       sourcePos :: SourcePos
     , value :: a
     }
-                deriving (Show)
+
+instance Show a => Show (Tagged a) where
+    show Tagged{sourcePos, value} = (show value) ++ " at " ++ (show sourcePos)
 
 instance Eq a => Eq (Tagged a) where
     (Tagged _ x) == (Tagged _ y) = x == y

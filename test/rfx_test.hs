@@ -109,11 +109,14 @@ lexerStringTest = do
   
 -- Parser tests
 parserAssert :: String -> Program SynExpr -> Assertion
-parserAssert s p = parseProgram (map value $ lexString s) @?= p
+parserAssert s p = (parseProgram $ lexString s) @?= p
 
 varForTest :: Var SynExpr
-varForTest = (Var "var" (NumSynExpr 0) InGlobal Int8Type)
-
+varForTest = Var{varName="var"
+                ,varInitValue=(NumSynExpr 0)
+                ,varScope=InGlobal
+                ,varType=Int8Type}
+             
 varNameForTest :: VarName
 varNameForTest = VarName "var"
                    
