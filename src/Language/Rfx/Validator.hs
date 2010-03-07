@@ -95,8 +95,11 @@ varByName ~pr@Program{programVars} scope varName = case varName of
                                                                  in if null vars
                                                                     then error "No such var"
                                                                     else head vars
-                                                 LongVarName thName vName -> head $ filter (\Var{varName=n} -> vName == n)
-                                                       $ scopeVars (InThread $ threadByName pr thName) programVars
+                                                 LongVarName thName vName -> let vars = filter (\Var{varName=n} -> vName == n)
+                                                                                        $ scopeVars (InThread $ threadByName pr thName) programVars
+                                                                             in if null vars
+                                                                                then error "No such var"
+                                                                                else head vars
                   
 validateExpr :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
 validateExpr pr _ (NumSynExpr n) = NumSemExpr n

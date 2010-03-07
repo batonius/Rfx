@@ -18,7 +18,7 @@ parseProgram ts = case runParser programParser [] "" ts of
 programParser :: TokenParser (Program SynExpr)
 programParser = do
   vars <- many $ try $ varDefParser
-  ths <- many threadParser
+  ths <- many1 threadParser
   thVars <- getState
   return $ Program{programThreads=ths, programVars=(setVarsScope InGlobal vars)++thVars}
 

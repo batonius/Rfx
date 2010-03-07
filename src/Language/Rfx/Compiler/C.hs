@@ -45,10 +45,13 @@ programCompiler program = do
                   | thread <- threads]
   -- States array
   addLine $ "int __rfx_states[__RFX_THREAD_COUNT] = {" ++ (concat $ map
-                                                           (\th -> (getStateName th (head $ threadStates th)) ++ ", ")
-                                                           threads)
-              ++ "};"
-  addLine $ "int __rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
+    (\th -> if (not.null) (threadStates th)
+            then (getStateName th (head $ threadStates th)) ++ ", "
+            else "ERROR LOL")
+    threads) ++ "};"
+  if (not.null) threads 
+    then addLine $ "int __rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
+    else return ()
   --States funs
   sequence_ [do
               enterThread thread
@@ -60,10 +63,13 @@ programCompiler program = do
   addLine "void __rfx_next()"
   addLine "{"
   addIndent
-  addLine $ "if (__rfx_cur_thread>" ++ (getThreadName $ last threads) ++ ")"
-  addIndent
-  addLine $ "__rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
-  subIndent
+  if (not.null) threads
+     then do
+       addLine $ "if (__rfx_cur_thread>" ++ (getThreadName $ last threads) ++ ")"
+       addIndent
+       addLine $ "__rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
+       subIndent
+     else return ()
   addLine "switch (__rfx_cur_thread)"
   addLine "{"
   addIndent
