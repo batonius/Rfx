@@ -60,7 +60,7 @@ withFileChooser caption parent action work = do
 main = do
   initGUI
   window <- windowNew
-  hPaned <- hPanedNew 
+  hBox <- hBoxNew False 2
   vBox <- vBoxNew False 2
   quitButton <- buttonNewWithLabel "Quit"
   openButton <- buttonNewWithLabel "Open.."
@@ -93,10 +93,15 @@ main = do
   mapM_ (boxPackStartDefaults buttonBox)
         [openButton, saveButton, compileButton
         , toButton autoCompileCheckButton, quitButton]
+  buttonBoxSetChildSecondary buttonBox quitButton True
   boxPackStart vBox buttonBox PackNatural 0
-  panedPack1 hPaned rfxSourceView False False
-  panedPack2 hPaned resSourceView False False
-  boxPackStart vBox hPaned PackGrow 0
+  rfxScrolledWindow <- scrolledWindowNew Nothing Nothing
+  scrolledWindowAddWithViewport rfxScrolledWindow rfxSourceView
+  resScrolledWindow <- scrolledWindowNew Nothing Nothing
+  scrolledWindowAddWithViewport resScrolledWindow resSourceView
+  boxPackStart hBox rfxScrolledWindow PackGrow 0
+  boxPackStart hBox resScrolledWindow PackGrow 0
+  boxPackStart vBox hBox PackGrow 0
   set window [ containerChild := vBox]
   window `on` sizeRequest $ return (Requisition 800 600)
   window `onDestroy` mainQuit

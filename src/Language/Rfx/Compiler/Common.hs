@@ -71,11 +71,6 @@ getVarsFromScope pos = State(\state ->
                                (Set.toList $ Set.filter (\ var -> (varScope var) == pos) (compilerVars state),
                                 state))
 
--- getVarsInContext :: ProgramPos -> Compiler [Var]
--- getVarsInContext pos = State(\state ->
---                                  (Set.toList $ Set.filter (\ var -> (varScope var) == pos || pos `posChildOf` (varScope var)) (compilerVars state),
---                                      state))
-
 enterThread :: Thread SemExpr -> Compiler ()
 enterThread th =State(\state -> ((),state{compilerCurrentThread = th}))
 
@@ -89,13 +84,3 @@ getState stName = do
   case length states of
     1 -> return $ head states
     _ -> return $ error $ "No such state " ++ stName
-
--- getVar :: Var -> Compiler Var
--- getVar v = do
---   let scopeSearch = case varScope v of
---                       (InThread _) -> getVarsFromScope
---                       _ -> getVarsInContext
---   threadVars <- scopeSearch $ varScope v
---   case filter (\var -> (varName var) == (varName v)) threadVars of
---     [onlyVar] -> return onlyVar
---     _ -> return $ error $ "No such var " ++ (varName v) ++ " " ++ (show $ varScope v)

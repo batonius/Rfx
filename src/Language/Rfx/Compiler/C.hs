@@ -147,15 +147,15 @@ statmentCompiler (WhileSt expr sts) = do
   addString ")\n"
   statmentsCompiler sts
 
--- statmentCompiler (NextSt ThreadState{stateName}) = do
---   state <- getState (stateName nextState)
---   curThread <- getCurrentThread
---   makeIndent
---   addString "__rfx_states["
---   addString $ getThreadName curThread
---   addString "] = "
---   addString $ getStateName curThread state
---   addString ";\n"
+statmentCompiler (NextSt ThreadState{stateName} _) = do
+  state <- getState stateName
+  curThread <- getCurrentThread
+  makeIndent
+  addString "__rfx_states["
+  addString $ getThreadName curThread
+  addString "] = "
+  addString $ getStateName curThread state
+  addString ";\n"
 
 statmentCompiler BreakSt = addLine "break;"
 
@@ -164,7 +164,7 @@ statmentCompiler (FunSt fun) = do
   exprCompiler fun
   addString ";\n"
 
-statmentCompiler _ = error "Not implemented yet"
+--statmentCompiler _ = error "Not implemented yet"
 
 exprCompiler :: SemExpr -> Compiler ()
 exprCompiler (NumSemExpr n) = addString $ (show n) ++ " "

@@ -121,7 +121,7 @@ data (Expression e) =>  Statment e = AssignSt (Variable e) e
     | IfSt e [Statment e]
     | IfElseSt e [Statment e] [Statment e]
     | WhileSt e [Statment e]
-    | NextSt (ThreadState e)
+    | NextSt (ThreadState e) SourcePos
     | BreakSt
     | FunSt e -- Expr == FunExpr
       deriving (Show, Eq, Ord)

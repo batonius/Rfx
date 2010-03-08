@@ -23,14 +23,15 @@ whiteSpaceLexer = skipMany (whiteSpaceCharLexer <?> "")
 
 anyCaseStringParser :: String -> Parser String
 anyCaseStringParser s = sequence [(char $ toLower c) <|> (char $ toUpper c)
-                                      | c <- s]
+                                  | c <- s]
 
 keywordLexer :: String -> Parser (Tagged String)
 keywordLexer str = (taggedParser $ do
                      st <- anyCaseStringParser str
-                     lookAhead $ choice $ ([do try whiteSpaceCharLexer; return ""]
-                                           ++ [do try eof; return ""]
-                                           ++ [try $ string s | (s, _) <- symbolTokens])
+                     lookAhead $ choice
+                               $ ([do try whiteSpaceCharLexer; return ""]
+                                  ++ [do try eof; return ""]
+                                  ++ [try $ string s | (s, _) <- symbolTokens])
                      return st) <?> ("keyword " ++ str)
 
 symbolLexer :: String -> Parser (Tagged String)
@@ -48,7 +49,7 @@ stringLexer = taggedParser $ do
   char '\"'
   string <- manyTill anyChar $ try $ char '\"'
   return $ StringToken string
-         
+
 identifierLexer :: Parser (Tagged Token)
 identifierLexer = taggedParser $ do
   whiteSpaceLexer
@@ -64,19 +65,19 @@ eofLexer = taggedParser $ do
 
 symbolLexers :: [Parser (Tagged Token)]
 symbolLexers = [try $  do
-                   whiteSpaceLexer
-                   pos <- getPosition
-                   symbolLexer s
-                   return (Tagged pos t)
-                 | (s, t) <- symbolTokens]
+                 whiteSpaceLexer
+                 pos <- getPosition
+                 symbolLexer s
+                 return (Tagged pos t)
+                | (s, t) <- symbolTokens]
 
 keywordLexers :: [Parser (Tagged Token)]
 keywordLexers = [try $ do
-                    whiteSpaceLexer
-                    pos <- getPosition
-                    keywordLexer s
-                    return (Tagged pos t)
-                  | (s, t) <- keywordTokens]
+                  whiteSpaceLexer
+                  pos <- getPosition
+                  keywordLexer s
+                  return (Tagged pos t)
+                 | (s, t) <- keywordTokens]
 
 tokenLexer :: Parser (Tagged Token)
 tokenLexer = choice $ [try stringLexer

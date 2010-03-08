@@ -15,69 +15,69 @@ parseProgram :: [Tagged Token] -> Program SynExpr
 parseProgram ts = case runParser programParser [] "" ts of
                         Left err -> throw $ SynException err
                         Right p ->  p
-                                   
+
 programParser :: TokenParser (Program SynExpr)
 programParser = do
   vars <- many $ try $ varDefParser
-  ths <- many1 threadParser
+  programThreads <- many1 threadParser
   thVars <- getState
-  return $ Program{programThreads=ths, programVars=(setVarsScope InGlobal vars)++thVars}
+  return $ Program{programThreads
+                  ,programVars=(setVarsScope InGlobal vars)++thVars}
 
 addVars :: [Var SynExpr] -> TokenParser ()
 addVars vars = do
   oldVars <- getState
   setState (oldVars ++ vars)
-                        
+
 varDefParser :: TokenParser (Var SynExpr)
 varDefParser = do
-  (Tagged pos (IdentifierToken varTypeName)) <- taggedIdentifierParser
-  setPosition pos
-  (IdentifierToken vn) <- identifierParser
+  (Tagged varSourcePos (IdentifierToken varTypeName)) <- taggedIdentifierParser
+  (IdentifierToken varName) <- identifierParser
   tokenParser AssignToken
-  initExpr <- exprParser
+  varInitValue <- exprParser
   tokenParser SemicolonToken
-  return Var{varName=vn
+  return Var{varName
             ,varType=VarTypeName varTypeName
-            ,varInitValue=initExpr
+            ,varInitValue
             ,varScope=InGlobal
-            ,varSourcePos=pos}
+            ,varSourcePos}
 
 threadParser :: TokenParser (Thread SynExpr)
 threadParser = do
   tokenParser ThreadToken
-  (IdentifierToken thName) <- identifierParser
+  (IdentifierToken threadName) <- identifierParser
   tokenParser WhereToken
-  vars <- many $ try varDefParser 
-  sts <- manyTill stateParser $ do
-                 tokenParser EndToken
-                 tokenParser SemicolonToken
-  let thread = Thread{threadName=thName,threadStates=map fst sts}
+  vars <- many $ try varDefParser
+  states <- manyTill stateParser $ do
+    tokenParser EndToken
+    tokenParser SemicolonToken
+  let thread = Thread{threadName,threadStates=map fst states}
   addVars $ setVarsScope (InThread thread) vars
-  sequence_ [addVars $ setVarsScope (InState thread state) stVars              
-    | (state, stVars) <- sts]
+  sequence_ [addVars $ setVarsScope (InState thread state) stVars
+             | (state, stVars) <- states]
   return thread
 
 stateParser :: TokenParser (ThreadState SynExpr, [Var SynExpr])
 stateParser = do
   tokenParser StateToken
-  (IdentifierToken stName) <- identifierParser
+  (IdentifierToken stateName) <- identifierParser
   tokenParser WhereToken
   vars <- many $ try varDefParser
-  sts <- manyTill statmentParser $ do
-                tokenParser EndToken
-                tokenParser SemicolonToken
-  let state = ThreadState{stateName=stName
-                         ,stateStatments=sts}
+  stateStatments <- manyTill statmentParser $ do
+    tokenParser EndToken
+    tokenParser SemicolonToken
+  let state = ThreadState{stateName
+                         ,stateStatments}
   return $ (state, vars)
 
 statmentParser :: TokenParser (Statment SynExpr)
 statmentParser = do
-  statment <- choice [ try assignParser
-                    , try breakParser
-                    , try whileParser
-                    , try ifParser
-                    , try nextParser
-                    , try funParser]
+  statment <- choice [try assignParser
+                    ,try breakParser
+                    ,try whileParser
+                    ,try ifParser
+                    ,try nextParser
+                    ,try funParser]
   tokenParser SemicolonToken
   return statment
 
@@ -99,10 +99,10 @@ ifParser = do
   tokenParser IfToken
   expr <- exprParser
   tokenParser ThenToken
-  sts <- manyTill statmentParser $ choice [ lookAhead $ tokenParser EndToken
-                                          , lookAhead $ tokenParser ElseToken]
-  next <- choice [ tokenParser EndToken
-                 , tokenParser ElseToken]
+  sts <- manyTill statmentParser $ choice [lookAhead $ tokenParser EndToken
+                                          ,lookAhead $ tokenParser ElseToken]
+  next <- choice [tokenParser EndToken
+                 ,tokenParser ElseToken]
   if next /= ElseToken
     then return $ IfSt expr sts
     else do
@@ -112,8 +112,9 @@ ifParser = do
 nextParser :: TokenParser (Statment SynExpr)
 nextParser = do
   tokenParser NextToken
+  pos <- getPosition
   (IdentifierToken stName) <- identifierParser
-  return $ NextSt $ ThreadState stName []
+  return $ NextSt (ThreadState stName []) pos
 
 assignParser :: TokenParser (Statment SynExpr)
 assignParser = do
@@ -129,12 +130,12 @@ funParser = do
 
 exprParser :: TokenParser SynExpr
 exprParser = do
-  expr <- choice [ try opExprParser
-                , try numExprParser
-                , try funExprParser
-                , try varExprParser
-                , try subExprParser
-                , try stringExprParser]
+  expr <- choice [try opExprParser
+                ,try numExprParser
+                ,try funExprParser
+                ,try varExprParser
+                ,try subExprParser
+                ,try stringExprParser]
   return expr
 
 funExprParser :: TokenParser SynExpr
@@ -154,7 +155,7 @@ stringExprParser :: TokenParser SynExpr
 stringExprParser = do
   (StringToken s) <- stringParser
   return $ StringSynExpr s
-         
+
 subExprParser :: TokenParser SynExpr
 subExprParser = do
   tokenParser LParToken
@@ -236,7 +237,7 @@ taggedIdentifierParser :: TokenParser (Tagged Token)
 taggedIdentifierParser = taggedTokenTestParser (\x -> case x of
                                                      (IdentifierToken _) -> True
                                                      _ -> False)
-                                                
+
 numberParser :: TokenParser Token
 numberParser = tokenTestParser(\x -> case x of
                                            (NumberToken _) -> True
