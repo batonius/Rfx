@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 -- | Rfx main file
 import System.Environment(getArgs)
+import System.Exit
 import Prelude(($), IO, map, show, (++))
 import System.IO.UTF8
 -- TODO remove unnessesary
@@ -21,4 +22,6 @@ main = do
   (inFile:_) <- getArgs
   inFileString <- readFile inFile
   (compileFile inFileString) `catch`
-       (\ (ex::RfxException) -> putStrLn $ "Lol i catch: " ++ (show ex))
+       (\ (ex::RfxException) -> do
+          putStrLn $ "Lol i catch: " ++ (show ex)
+          exitWith $ ExitFailure 1)

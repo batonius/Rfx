@@ -12,6 +12,7 @@ module Language.Rfx.Structures(Program(..),
                                VarType(..),
                                ProgramPos(..),
                                VarName(..),
+                               VarTypeName(..),
                                opTypes,
                                semOpTypes,
                                posChildOf,
@@ -27,20 +28,20 @@ data (Expression e) => Var e = Var
       varName :: String
     , varInitValue :: e
     , varScope :: ProgramPos e
-    , varType :: VarType
+    , varType :: (VariableType e)
     , varSourcePos :: SourcePos
     } deriving (Show, Ord)
                             
 instance (Expression e) => Eq (Var e) where
     (==) a b = (varName a) == (varName b)
 
-data VarName = VarName String
-             | LongVarName String String
+data VarName = VarName String SourcePos
+             | LongVarName String String SourcePos
                deriving (Eq, Ord, Show)
                
 data SynExpr = NumSynExpr Int
-             | OpSynExpr SynOper SynExpr SynExpr
-             | VarSynExpr VarName
+             | OpSynExpr SynOper SynExpr SynExpr SourcePos
+             | VarSynExpr VarName 
              | SubSynExpr SynExpr
              | FunSynExpr String [SynExpr]
              | StringSynExpr String
@@ -114,6 +115,8 @@ data VarType = Int8Type
              | AnyType
                deriving (Show, Eq, Ord)
 
+data VarTypeName = VarTypeName String deriving (Eq, Show, Ord)
+                        
 data (Expression e) =>  Statment e = AssignSt (Variable e) e
     | IfSt e [Statment e]
     | IfElseSt e [Statment e] [Statment e]
@@ -126,15 +129,20 @@ data (Expression e) =>  Statment e = AssignSt (Variable e) e
 class (Eq e
       ,Eq (Variable e)
       ,Ord (Variable e)
-      ,Show (Variable e)) => Expression e where
+      ,Show (Variable e)
+      ,Eq (VariableType e)
+      ,Ord (VariableType e)
+      ,Show (VariableType e)) => Expression e where
     type Variable e :: *
-
+    type VariableType e :: *
 
 instance Expression SynExpr where
     type Variable SynExpr = VarName
-                               
+    type VariableType SynExpr = VarTypeName
+                              
 instance Expression SemExpr where
     type Variable SemExpr = Var SemExpr
+    type VariableType SemExpr = VarType
 
 posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
 posChildOf a b = case b of

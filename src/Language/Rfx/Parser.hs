@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Language.Rfx.Parser(parseProgram)
 where
 import Language.Rfx.Tokens
@@ -35,14 +36,11 @@ varDefParser = do
   tokenParser AssignToken
   initExpr <- exprParser
   tokenParser SemicolonToken
-  case getVarType varTypeName of
-    Nothing -> return $ error $ "No such type " ++ varTypeName ++ "\n"
-    Just tp -> do
-      return Var{varName=vn
-                ,varType=tp
-                ,varInitValue=initExpr
-                ,varScope=InGlobal
-                ,varSourcePos=pos}
+  return Var{varName=vn
+            ,varType=VarTypeName varTypeName
+            ,varInitValue=initExpr
+            ,varScope=InGlobal
+            ,varSourcePos=pos}
 
 threadParser :: TokenParser (Thread SynExpr)
 threadParser = do
@@ -54,9 +52,9 @@ threadParser = do
                  tokenParser EndToken
                  tokenParser SemicolonToken
   let thread = Thread{threadName=thName,threadStates=map fst sts}
+  addVars $ setVarsScope (InThread thread) vars
   sequence_ [addVars $ setVarsScope (InState thread state) stVars              
     | (state, stVars) <- sts]
-  addVars $ setVarsScope (InThread thread) vars
   return thread
 
 stateParser :: TokenParser (ThreadState SynExpr, [Var SynExpr])
@@ -187,30 +185,34 @@ opExprParser = do
                  , try subExprParser]
   op <- choice [try $ tokenParser tok
                    | (tok, _) <- tokenOps]
+  pos <- getPosition
   rexpr <- exprParser
   case lookup op tokenOps of
-    Nothing -> return $ error"Operator unknown\n"
-    Just o -> return $ OpSynExpr o lexpr rexpr
+    Nothing -> return $ error "Operator unknown\n"
+    Just o -> return $ OpSynExpr o lexpr rexpr pos
 
 varNameParser :: TokenParser VarName
 varNameParser = do
   varNameParts <- sepBy1 identifierParser (tokenParser DotToken)
+  pos <- getPosition
   case length varNameParts of
     1 -> do
       let (IdentifierToken varId) = head varNameParts
-      return $ VarName varId
+      return $ VarName varId pos
     2 -> do
       let (IdentifierToken thId) = head varNameParts
       let (IdentifierToken varId) = varNameParts !! 1
-      return $ LongVarName thId varId
-    _ -> return $ error "Too long variable name"
+      return $ LongVarName thId varId pos
+    _ -> return $ throw $ VarNameTooLongSynExc
+        (concat $ map (\(IdentifierToken th) -> th++".") varNameParts)
+        pos
 
 -- -- Helper funs
 tokenTestParser :: (Token -> Bool) -> TokenParser Token
 tokenTestParser test = token showTok posFromTok testTok
     where
       showTok t = show t
-      posFromTok _ = newPos "" 0 0
+      posFromTok Tagged{sourcePos}  = sourcePos
       testTok :: (Tagged Token) -> Maybe Token
       testTok t = if (test.value) t then Just (value t) else Nothing
 
@@ -218,7 +220,7 @@ taggedTokenTestParser :: (Token -> Bool) -> TokenParser (Tagged Token)
 taggedTokenTestParser test = token showTok posFromTok testTok
     where
       showTok t = show t
-      posFromTok _ = newPos "" 0 0
+      posFromTok Tagged{sourcePos}  = sourcePos
       testTok :: (Tagged Token) -> Maybe (Tagged Token)
       testTok t = if (test.value) t then Just t else Nothing
 

@@ -3,6 +3,7 @@ import Graphics.UI.Gtk hiding (fill)
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.SourceView
 import Control.Monad.Trans(liftIO)
+import Control.Monad
 import Graphics.UI.Gtk.Buttons.Button
 import Graphics.UI.Gtk.Buttons.CheckButton
 import Language.Rfx.Compiler
@@ -13,24 +14,34 @@ import Language.Rfx.Error
 import Control.Exception 
 import Prelude hiding (catch)
     
-compileString :: String -> IO String    
+compileString :: String -> IO (Either (Int,String) String)
 compileString string = do
-  evaluate  $ compileProgram defaultCompilerOptions
-            $ validateProgram
-            $ parseProgram
-            $ lexString string
+  ret <- evaluate $ compileProgram defaultCompilerOptions
+        $ validateProgram
+        $ parseProgram
+        $ lexString string
+  return $ Right ret
 
-doCompile :: String -> IO String
+doCompile :: String -> IO (Either (Int,String) String)
 doCompile string = (compileString string) `Control.Exception.catch`
-                   (\ (ex::SomeException) -> return $ "Lol i catch: " ++ (show ex))
+                   (\ (ex::RfxException) -> return $ Left ((getErrorLine ex), "Lol i catch: " ++ (show ex)))
 
 compileBuffers rfxSourceView resSourceView = do
     rfxBuffer <- textViewGetBuffer rfxSourceView
     resBuffer <- textViewGetBuffer resSourceView
+    startIter <- textBufferGetStartIter rfxBuffer
+    endIter <- textBufferGetEndIter rfxBuffer
+    textBufferRemoveTagByName rfxBuffer "Error" startIter endIter
     inText <- get rfxBuffer textBufferText
     compiledText <- doCompile inText
-    set resBuffer [textBufferText := compiledText]
-                   
+    case compiledText of
+      Right text -> set resBuffer [textBufferText := text]
+      Left (line, text) -> do
+        lineIter <- textBufferGetIterAtLineOffset rfxBuffer (line-1) 0
+        nLineIter <- textBufferGetIterAtLineOffset rfxBuffer (line) 0
+        textBufferApplyTagByName rfxBuffer "Error" lineIter nLineIter
+        set resBuffer [textBufferText := text]
+
 withFileChooser :: String -> Window -> FileChooserAction -> (FilePath -> IO ()) -> IO ()
 withFileChooser caption parent action work = do
   fileChooser <- fileChooserDialogNew (Just caption)
@@ -49,7 +60,7 @@ withFileChooser caption parent action work = do
 main = do
   initGUI
   window <- windowNew
-  hBox <- hBoxNew True 2
+  hPaned <- hPanedNew 
   vBox <- vBoxNew False 2
   quitButton <- buttonNewWithLabel "Quit"
   openButton <- buttonNewWithLabel "Open.."
@@ -65,20 +76,27 @@ main = do
       buffer <- sourceBufferNewWithLanguage cLang
       sourceViewNewWithBuffer buffer
     Nothing -> sourceViewNew
+  set resSourceView [ textViewWrapMode := WrapWord ]
   rfxLanguage <- sourceLanguageManagerGetLanguage languageManager "rfx"
   rfxSourceView <- case rfxLanguage of
     (Just rfxLang) -> do
       buffer <- sourceBufferNewWithLanguage rfxLang
       sourceViewNewWithBuffer buffer
     Nothing -> sourceViewNew
+  set rfxSourceView [ textViewWrapMode := WrapWord ]
+  rfxBuffer <- textViewGetBuffer rfxSourceView
+  errorTag <- textTagNew (Just "Error")
+  set errorTag [ textTagBackground := "#faa" ]
+  tagTable <- textBufferGetTagTable rfxBuffer
+  textTagTableAdd tagTable errorTag
   buttonBoxSetLayout buttonBox ButtonboxStart
   mapM_ (boxPackStartDefaults buttonBox)
         [openButton, saveButton, compileButton
         , toButton autoCompileCheckButton, quitButton]
   boxPackStart vBox buttonBox PackNatural 0
-  boxPackStart hBox rfxSourceView PackGrow 0
-  boxPackStart hBox resSourceView PackGrow 0
-  boxPackStart vBox hBox PackGrow 0
+  panedPack1 hPaned rfxSourceView False False
+  panedPack2 hPaned resSourceView False False
+  boxPackStart vBox hPaned PackGrow 0
   set window [ containerChild := vBox]
   window `on` sizeRequest $ return (Requisition 800 600)
   window `onDestroy` mainQuit

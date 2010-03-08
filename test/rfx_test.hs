@@ -115,7 +115,7 @@ varForTest :: Var SynExpr
 varForTest = Var{varName="var"
                 ,varInitValue=(NumSynExpr 0)
                 ,varScope=InGlobal
-                ,varType=Int8Type}
+                ,varType=VarTypeName "int8"}
              
 varNameForTest :: VarName
 varNameForTest = VarName "var"
