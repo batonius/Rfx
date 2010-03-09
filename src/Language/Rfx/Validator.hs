@@ -119,26 +119,30 @@ varByName ~pr@Program{programVars} scope varName  =
                                            then throw $ NoSuchVarSemExc varName
                                            else head vars
 
+
 validateExpr :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
-validateExpr pr _ (NumSynExpr n) = NumSemExpr n
-validateExpr pr _ (BoolSynExpr b) = BoolSemExpr b
-validateExpr pr _ (StringSynExpr s) = StringSemExpr s
-validateExpr pr scope (VarSynExpr varName) = VarSemExpr $ varByName pr scope varName
-validateExpr pr _ (FunSynExpr _ _ ) = FunSemExpr () -- TODO
-validateExpr pr scope (SubSynExpr e) = SubSemExpr $ validateExpr pr scope e
-validateExpr pr scope exp@(OpSynExpr op lExpr rExpr _) =
-    let vlExpr = validateExpr pr scope lExpr
-        vrExpr = validateExpr pr scope rExpr
-        vlType = typeOfExpr pr scope vlExpr
-        vrType = typeOfExpr pr scope vrExpr
-        (Just synOps) = Map.lookup op opTypes
-        (semOp,_) = let ops = filter (\(so, (lt, rt, _)) ->
-                                          (lt == vlType) && (rt == vrType) && (so `elem` synOps))
-                              $ semOpTypes
-                    in if null ops
-                       then throw $ OpSemExc exp
-                       else head ops
-    in OpSemExpr semOp vlExpr vrExpr
+validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPriority expr
+    where
+      validateExpr' :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
+      validateExpr' pr _ (NumSynExpr n) = NumSemExpr n
+      validateExpr' pr _ (BoolSynExpr b) = BoolSemExpr b
+      validateExpr' pr _ (StringSynExpr s) = StringSemExpr s
+      validateExpr' pr scope (VarSynExpr varName) = VarSemExpr $ varByName pr scope varName
+      validateExpr' pr _ (FunSynExpr _ _ ) = FunSemExpr () -- TODO
+      validateExpr' pr scope (SubSynExpr e) = SubSemExpr $ validateExpr' pr scope e
+      validateExpr' pr scope exp@(OpSynExpr op lExpr rExpr _) =
+          let vlExpr = validateExpr' pr scope lExpr
+              vrExpr = validateExpr' pr scope rExpr
+              vlType = typeOfExpr pr scope vlExpr
+              vrType = typeOfExpr pr scope vrExpr
+              (Just synOps) = Map.lookup op opTypes
+              (semOp,_) = let ops = filter (\(so, (lt, rt, _)) ->
+                                            (lt == vlType) && (rt == vrType) && (so `elem` synOps))
+                                    $ semOpTypes
+                          in if null ops
+                             then throw $ OpSemExc exp
+                             else head ops
+          in OpSemExpr semOp vlExpr vrExpr
 
 validateStatment :: Program SemExpr -> ProgramPos SemExpr -> Statment SynExpr -> Statment SemExpr
 validateStatment pr scope st@(IfSt ex sts) = let valEx = validateExpr pr scope ex
@@ -168,3 +172,56 @@ validateStatment pr scope st@(AssignSt varName expr) = let valExpr = validateExp
                                                        in if (varType var == valType)
                                                           then AssignSt var valExpr
                                                           else throw $ AssignWrongType st
+priorityList :: [[SynOper]]
+priorityList = [[AndSynOp
+                ,OrSynOp
+                ,XorSynOp]
+               ,[EqlSynOp
+                ,GrSynOp
+                ,LsSynOp
+                ,GrEqSynOp
+                ,LsEqSynOp]
+               ,[PlusSynOp
+                ,MinusSynOp]
+               ,[MulSynOp
+                ,DivSynOp]
+               ]
+
+applyOpPriority :: SynExpr -> SynExpr
+applyOpPriority (SubSynExpr e) = SubSynExpr $ applyOpPriority e
+applyOpPriority oe@(OpSynExpr op le re pos) = if opExpr re
+                                              then applyOpPriority' priorityList oe oe
+                                              else OpSynExpr op (applyOpPriority le) (applyOpPriority re) pos
+    where applyOpPriority' :: [[SynOper]] -> SynExpr -> SynExpr -> SynExpr
+          applyOpPriority' [] exprHead (OpSynExpr eo le re pos) = (OpSynExpr eo le (applyOpPriority' [] exprHead re) pos)
+          applyOpPriority' [] exprHead e = applyOpPriority e
+          applyOpPriority' pl@(op:ops) exprHead oe@(OpSynExpr eo le re pos) = if eo `elem` op
+                                                                              then let newLe = if exprHead == oe
+                                                                                               then applyOpPriority le
+                                                                                               else changeExprVar exprHead oe $ applyOpPriority le
+                                                                                   in OpSynExpr
+                                                                                      eo
+                                                                                      (SubSynExpr $ applyOpPriority' ops newLe newLe)
+                                                                                      (applyOpPriority' pl re re)
+                                                                                      pos
+                                                                              else applyOpPriority' pl exprHead re
+          applyOpPriority' (op:ops) exprHead _ = SubSynExpr $ applyOpPriority' ops exprHead exprHead
+          changeExprVar :: SynExpr -> SynExpr -> SynExpr -> SynExpr
+          changeExprVar (SubSynExpr e) from to = SubSynExpr $ changeExprVar e from to
+          changeExprVar (OpSynExpr op le re pos) from to = OpSynExpr op le (if re == from then to
+                                                                            else (changeExprVar re from to)) pos
+          changeExprVar e _ _ = e
+applyOpPriority e = e
+
+dropSubExpr e = let dse = dropSubExpr' e
+                in case dse of
+                     (SubSynExpr se) -> se
+                     _ -> dse
+    where
+      dropSubExpr' (OpSynExpr op le re pos) = OpSynExpr op (dropSubExpr' le) (dropSubExpr' re) pos
+      dropSubExpr' (SubSynExpr (SubSynExpr se)) = dropSubExpr' $ SubSynExpr se
+      dropSubExpr' (SubSynExpr se) = if constExpr se || varExpr se then se
+                                     else SubSynExpr $ dropSubExpr' se
+      dropSubExpr' se = se
+                    
+                   

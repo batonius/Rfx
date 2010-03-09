@@ -96,8 +96,10 @@ main = do
   buttonBoxSetChildSecondary buttonBox quitButton True
   boxPackStart vBox buttonBox PackNatural 0
   rfxScrolledWindow <- scrolledWindowNew Nothing Nothing
+  scrolledWindowSetPolicy rfxScrolledWindow PolicyAutomatic PolicyAutomatic
   scrolledWindowAddWithViewport rfxScrolledWindow rfxSourceView
   resScrolledWindow <- scrolledWindowNew Nothing Nothing
+  scrolledWindowSetPolicy resScrolledWindow PolicyAutomatic PolicyAutomatic
   scrolledWindowAddWithViewport resScrolledWindow resSourceView
   boxPackStart hBox rfxScrolledWindow PackGrow 0
   boxPackStart hBox resScrolledWindow PackGrow 0

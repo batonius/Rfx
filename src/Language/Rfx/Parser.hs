@@ -193,10 +193,11 @@ tokenOps = [ (PlusToken, PlusSynOp)
 opExprParser :: TokenParser SynExpr
 opExprParser = do
   lexpr <- choice [try numExprParser
-                 , try stringExprParser
-                 , try boolExprParser
-                 , try varExprParser
-                 , try subExprParser]
+                 ,try boolExprParser
+                 ,try funExprParser
+                 ,try varExprParser
+                 ,try subExprParser
+                 ,try stringExprParser]
   op <- choice [try $ tokenParser tok
                    | (tok, _) <- tokenOps]
   pos <- getPosition

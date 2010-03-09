@@ -143,14 +143,38 @@ class (Eq e
       ,Show (VariableType e)) => Expression e where
     type Variable e :: *
     type VariableType e :: *
+    constExpr :: e -> Bool
+    opExpr :: e -> Bool
+    subExpr :: e -> Bool
+    varExpr :: e -> Bool
 
 instance Expression SynExpr where
     type Variable SynExpr = VarName
     type VariableType SynExpr = VarTypeName
+    constExpr (NumSynExpr _) = True
+    constExpr (StringSynExpr _) = True
+    constExpr (BoolSynExpr _) = True
+    constExpr _ = False
+    opExpr OpSynExpr{} = True
+    opExpr _ = False
+    subExpr SubSynExpr{} = True
+    subExpr _ = False
+    varExpr VarSynExpr{} = True
+    varExpr _ = False
                               
 instance Expression SemExpr where
     type Variable SemExpr = Var SemExpr
     type VariableType SemExpr = VarType
+    constExpr (NumSemExpr _) = True
+    constExpr (StringSemExpr _) = True
+    constExpr (BoolSemExpr _) = True
+    constExpr _ = False
+    opExpr OpSemExpr{} = True
+    opExpr _ = False
+    subExpr SubSemExpr{} = True
+    subExpr _ = False
+    varExpr VarSemExpr{} = True
+    varExpr _ = False
 
 posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
 posChildOf a b = case b of
