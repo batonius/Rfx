@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module Language.Rfx.Lexer (lexString, Tagged(..))
 where
 import Language.Rfx.Tokens
@@ -10,7 +11,7 @@ import Data.Char(toUpper, toLower)
 lexString :: String -> [Tagged Token]
 lexString s = case parse mainLexer "" s of
                 Left err -> throw $ LexException err
-                Right ts -> ts
+                Right ts -> filter (\Tagged{value}->value/=CommentToken) ts
 
 taggedParser :: Parser a -> Parser (Tagged a)
 taggedParser parser = liftM2 Tagged getPosition parser
@@ -21,6 +22,20 @@ whiteSpaceCharLexer = oneOf " \v\f\t\n" <?> "SPACE"
 whiteSpaceLexer :: Parser ()
 whiteSpaceLexer = skipMany (whiteSpaceCharLexer <?> "")
 
+lineCommentLexer :: Parser (Tagged Token)
+lineCommentLexer = taggedParser $ do
+  whiteSpaceLexer
+  symbolLexer "//"
+  manyTill anyChar $ try (char '\n')
+  return CommentToken
+
+multiLineCommentLexer :: Parser (Tagged Token)
+multiLineCommentLexer = taggedParser $ do
+  whiteSpaceLexer
+  symbolLexer "(*"
+  manyTill anyChar $ try (symbolLexer "*)")
+  return CommentToken
+         
 anyCaseStringParser :: String -> Parser String
 anyCaseStringParser s = sequence [(char $ toLower c) <|> (char $ toUpper c)
                                   | c <- s]
@@ -80,7 +95,9 @@ keywordLexers = [try $ do
                  | (s, t) <- keywordTokens]
 
 tokenLexer :: Parser (Tagged Token)
-tokenLexer = choice $ [try stringLexer
+tokenLexer = choice $ [try multiLineCommentLexer
+                      ,try lineCommentLexer
+                      ,try stringLexer
                       ,try numberLexer]
               ++ keywordLexers
               ++ symbolLexers

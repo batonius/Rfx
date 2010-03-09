@@ -44,9 +44,16 @@ data Token = NumberToken Int        -- Number
            | DoToken
            | CommaToken
            | BreakToken             -- "break"
+           | TrueToken
+           | FalseToken
+           | AndToken
+           | OrToken
+           | XorToken
+           | NotToken
            | BoolToken
            | Int8Token
            | EOFToken
+           | CommentToken
              deriving (Show, Eq)
 
 keywordTokens :: [(String, Token)]
@@ -62,6 +69,12 @@ keywordTokens =
     , ("DO", DoToken)
     , ("NEXT", NextToken)
     , ("BREAK", BreakToken)
+    , ("TRUE", TrueToken)
+    , ("FALSE", FalseToken)
+    , ("AND", AndToken)
+    , ("OR", OrToken)
+    , ("XOR", XorToken)
+    , ("NOT", NotToken)
     , ("ПОТОК", ThreadToken)
     , ("СОСТОЯНИЕ", StateToken)
     , ("ЕСЛИ", IfToken)
@@ -72,7 +85,13 @@ keywordTokens =
     , ("ПОКА", WhileToken)
     , ("ДЕЛАЙ", DoToken)
     , ("ПРЕРВАТЬ", BreakToken)
-    , ("ДАЛЬШЕ", NextToken)]
+    , ("ДАЛЬШЕ", NextToken)
+    , ("ИСТИНА", TrueToken)
+    , ("ЛОЖЬ", FalseToken)
+    , ("И", AndToken)
+    , ("ИЛИ", OrToken)
+    , ("ИИЛИ", XorToken)
+    , ("НЕ", NotToken)]
 
 symbolTokens :: [(String, Token)]
 symbolTokens = [ ("+", PlusToken)

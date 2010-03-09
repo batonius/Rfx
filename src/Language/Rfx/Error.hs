@@ -86,7 +86,7 @@ instance Exception SemException where
 instance Show SemException where
     show (NoSuchVarSemExc varName) = case varName of
                                        VarName name pos -> "No such variable " ++ name ++ " at " ++ (show pos)
-                                       LongVarName thName varName pos -> "No such variable" ++
+                                       LongVarName thName varName pos -> "No such variable " ++
                                                                         thName ++ "." ++ varName ++ " at "
                                                                         ++ (show pos)
     show (OpSemExc (OpSynExpr op _ _ pos)) = "Incorrect usage of operator " ++ (show op) ++ " at " ++ (show pos)
@@ -111,7 +111,7 @@ instance Lined SemException where
     getErrorLine (VarInitWrongTypeSemExc (Var{varSourcePos})) = sourceLine varSourcePos + 1
     getErrorLine (VarAlreadyExistsSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
     getErrorLine (NoSuchTypeSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
-    getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos + 1
+    getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos
     getErrorLine (NoSuchVarSemExc varName) = case varName of
                                                VarName _ pos -> sourceLine pos
                                                LongVarName _ _ pos -> sourceLine pos

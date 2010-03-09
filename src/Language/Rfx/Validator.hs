@@ -69,6 +69,7 @@ usedVars _ = []
 
 typeOfExpr :: Program SemExpr -> ProgramPos SemExpr -> SemExpr -> VarType
 typeOfExpr _ _ (NumSemExpr _) = Int8Type -- TODO
+typeOfExpr _ _ (BoolSemExpr _) = BoolType
 typeOfExpr _ _ (VarSemExpr Var{varType}) = varType
 typeOfExpr pr scope (SubSemExpr se) = typeOfExpr pr scope se
 typeOfExpr _ _ (StringSemExpr _) = StringType
@@ -89,9 +90,9 @@ transScope pr (InState Thread{threadName} ThreadState{stateName}) =
 
 threadByName :: Program SemExpr -> String -> SourcePos -> Thread SemExpr
 threadByName ~Program{programThreads} thName pos = let threads = filter (\Thread{threadName} -> threadName == thName) programThreads
-                                               in if null threads
-                                                    then throw $ NoSuchThreadSemExc thName pos
-                                                    else head threads
+                                                   in if null threads
+                                                      then throw $ NoSuchThreadSemExc thName pos
+                                                      else head threads
 
 stateByName :: Program SemExpr -> String -> String -> SourcePos -> ThreadState SemExpr
 stateByName pr thName stName pos = let states = filter (\ThreadState{stateName} -> stateName == stName) $ threadStates $ threadByName pr thName pos
@@ -107,14 +108,20 @@ varByName ~pr@Program{programVars} scope varName  =
                         in if null vars
                              then throw $ NoSuchVarSemExc varName
                              else head vars
-      LongVarName thName vName pos -> let vars = filter (\Var{varName=n} -> vName == n)
-                                                 $ scopeVars (InThread $ threadByName pr thName pos) programVars
+      LongVarName thName vName pos -> let vars = filter (\Var{varName, varScope} ->
+                                                            case varScope of
+                                                              InThread Thread{threadName} -> (thName==threadName)
+                                                                       && (varName==vName)
+                                                              _ -> False) programVars
+                                             -- filter (\Var{varName=n} -> vName == n)
+                                             --     $ scopeVars (InThread $ threadByName pr thName pos) programVars
                                       in if null vars
                                            then throw $ NoSuchVarSemExc varName
                                            else head vars
 
 validateExpr :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
 validateExpr pr _ (NumSynExpr n) = NumSemExpr n
+validateExpr pr _ (BoolSynExpr b) = BoolSemExpr b
 validateExpr pr _ (StringSynExpr s) = StringSemExpr s
 validateExpr pr scope (VarSynExpr varName) = VarSemExpr $ varByName pr scope varName
 validateExpr pr _ (FunSynExpr _ _ ) = FunSemExpr () -- TODO

@@ -38,14 +38,6 @@
       </include>
     </context>
 
-    <context id="block-comment-2" style-ref="comment">
-      <start>\{</start>
-      <end>\}</end>
-      <include>
-        <context ref="def:in-comment"/>
-      </include>
-    </context>
-
     <context id="general-format" style-ref="keyword">
       <keyword>thread</keyword>
       <keyword>state</keyword>
@@ -68,9 +60,9 @@
       <keyword>int8</keyword>
     </context>
 
-    <context id="builtin-values" style-ref="keyword">
-       <keyword>False</keyword>
-      <keyword>True</keyword>
+    <context id="builtin-values" style-ref="decimal">
+       <keyword>false</keyword>
+      <keyword>true</keyword>
     </context>
 
     <context id="number" style-ref="decimal">
@@ -86,7 +78,6 @@
         <context ref="string"/>
         <context ref="line-comment"/>
         <context ref="block-comment-1"/>
-        <context ref="block-comment-2"/>
         <context ref="general-format"/>
         <context ref="loop-flow-and-exceptions-keywords"/>
         <context ref="builtin-types"/>

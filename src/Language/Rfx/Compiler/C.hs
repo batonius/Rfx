@@ -10,6 +10,7 @@ programCompiler program = do
   let threads = programThreads program
   let threadsLen = length threads
   addLine "/*Rfx was here*/"
+  addLine "#define XOR(x,y) ((x) ? !(y) : (y))"
   addLine $ "#define __RFX_THREAD_COUNT " ++ (show $ threadsLen)
   addLine $ "enum __rfx_threads {"
   addIndent
@@ -169,8 +170,10 @@ statmentCompiler (FunSt fun) = do
 exprCompiler :: SemExpr -> Compiler ()
 exprCompiler (NumSemExpr n) = addString $ (show n) ++ " "
 
-exprCompiler (StringSemExpr s) = addString $ "\"" ++ s ++ "\""
-                           
+exprCompiler (StringSemExpr s) = addString $ "\"" ++ s ++ "\" "
+
+exprCompiler (BoolSemExpr b) = addString $ if b then "1 " else  "0 "
+                                 
 exprCompiler (SubSemExpr e) = do
   addString "( "
   exprCompiler e
@@ -178,17 +181,26 @@ exprCompiler (SubSemExpr e) = do
 
 exprCompiler (VarSemExpr v) = varCompiler v
 exprCompiler (OpSemExpr op le re) = do
-  exprCompiler le
-  addString $ case op of
-                NumPlusSemOp     -> "+ "
-                NumMinusSemOp    -> "- "
-                NumMulSemOp      -> "* "
-                NumEqlSemOp      -> "== "
-                NumGrSemOp       -> "> "
-                NumLsSemOp       -> "< "
-                NumDivSemOp      -> "/ "
-                _          -> ""
-  exprCompiler re
+  if op == BoolXorSemOp
+    then do
+      addString("XOR(")
+      exprCompiler le
+      addString(", ")
+      exprCompiler re
+    else do
+      exprCompiler le
+      addString $ case op of
+                    NumPlusSemOp     -> "+ "
+                    NumMinusSemOp    -> "- "
+                    NumMulSemOp      -> "* "
+                    NumEqlSemOp      -> "== "
+                    NumGrSemOp       -> "> "
+                    NumLsSemOp       -> "< "
+                    NumDivSemOp      -> "/ "
+                    BoolAndSemOp     -> "&& "
+                    BoolOrSemOp      -> "|| "
+                    _          -> ""
+      exprCompiler re
 
 exprCompiler (FunSemExpr ()) = do
   addString "Fun goes here"

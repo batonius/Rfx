@@ -132,6 +132,7 @@ exprParser :: TokenParser SynExpr
 exprParser = do
   expr <- choice [try opExprParser
                 ,try numExprParser
+                ,try boolExprParser
                 ,try funExprParser
                 ,try varExprParser
                 ,try subExprParser
@@ -156,6 +157,13 @@ stringExprParser = do
   (StringToken s) <- stringParser
   return $ StringSynExpr s
 
+boolExprParser :: TokenParser SynExpr
+boolExprParser = do
+  boolToken <- boolParser
+  return $ BoolSynExpr $ case boolToken of
+                           TrueToken -> True
+                           FalseToken -> False
+         
 subExprParser :: TokenParser SynExpr
 subExprParser = do
   tokenParser LParToken
@@ -177,11 +185,16 @@ tokenOps = [ (PlusToken, PlusSynOp)
            , (GrToken, GrSynOp)
            , (LsToken, LsSynOp)
            , (GrEqToken, GrEqSynOp)
-           , (LsEqToken, LsEqSynOp)]
+           , (LsEqToken, LsEqSynOp)
+           , (AndToken, AndSynOp)
+           , (OrToken, OrSynOp)
+           , (XorToken, XorSynOp)]
 
 opExprParser :: TokenParser SynExpr
 opExprParser = do
   lexpr <- choice [try numExprParser
+                 , try stringExprParser
+                 , try boolExprParser
                  , try varExprParser
                  , try subExprParser]
   op <- choice [try $ tokenParser tok
@@ -248,5 +261,11 @@ stringParser = tokenTestParser(\x -> case x of
                                       (StringToken _) -> True
                                       _ -> False)
 
+boolParser :: TokenParser Token
+boolParser = tokenTestParser(\x -> case x of
+                                    TrueToken -> True
+                                    FalseToken -> True
+                                    _ -> False)
+                                           
 setVarsScope :: ProgramPos SynExpr -> [Var SynExpr] -> [Var SynExpr]
 setVarsScope newScope = map (\var -> var{varScope=newScope})

@@ -45,6 +45,7 @@ data SynExpr = NumSynExpr Int
              | SubSynExpr SynExpr
              | FunSynExpr String [SynExpr]
              | StringSynExpr String
+             | BoolSynExpr Bool
                deriving (Show, Eq, Ord)
 
 data SemExpr = NumSemExpr Int
@@ -53,6 +54,7 @@ data SemExpr = NumSemExpr Int
              | SubSemExpr SemExpr
              | FunSemExpr ()
              | StringSemExpr String
+             | BoolSemExpr Bool
              deriving (Show, Eq, Ord)
           
 data (Expression e) => ProgramPos e = InGlobal
@@ -93,6 +95,9 @@ data SynOper = PlusSynOp
           | LsSynOp
           | GrEqSynOp
           | LsEqSynOp
+          | AndSynOp
+          | OrSynOp
+          | XorSynOp
             deriving (Show, Eq, Ord)
 
 data SemOper = NumPlusSemOp
@@ -106,6 +111,9 @@ data SemOper = NumPlusSemOp
              | NumGrSemOp
              | NumLsSemOp
              | NumDivSemOp
+             | BoolAndSemOp
+             | BoolOrSemOp
+             | BoolXorSemOp
                deriving (Show, Eq, Ord)
                      
 data VarType = Int8Type
@@ -171,7 +179,10 @@ opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp])
                        ,(GrSynOp, [NumGrSemOp])
                        ,(LsSynOp, [NumLsSemOp])
                        ,(GrEqSynOp, [])
-                       ,(LsEqSynOp, [])]
+                       ,(LsEqSynOp, [])
+                       ,(AndSynOp, [BoolAndSemOp])
+                       ,(OrSynOp, [BoolOrSemOp])
+                       ,(XorSynOp, [BoolXorSemOp])]
 
 
 semOpTypes :: [(SemOper, (VarType, VarType, VarType))]
@@ -183,5 +194,8 @@ semOpTypes =[(NumPlusSemOp, (Int8Type, Int8Type, Int8Type))
             ,(NumLsSemOp, (Int8Type, Int8Type, BoolType))
             ,(NumGrSemOp, (Int8Type, Int8Type, BoolType))
             ,(NumNEqlSemOp, (Int8Type, Int8Type, Int8Type))
-            ,(NumDivSemOp, (Int8Type, Int8Type, Int8Type))]
+            ,(NumDivSemOp, (Int8Type, Int8Type, Int8Type))
+            ,(BoolAndSemOp, (BoolType, BoolType, BoolType))
+            ,(BoolOrSemOp, (BoolType, BoolType, BoolType))
+            ,(BoolXorSemOp, (BoolType, BoolType, BoolType))]
                                   
