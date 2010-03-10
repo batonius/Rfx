@@ -65,6 +65,28 @@ stringLexer = taggedParser $ do
   string <- manyTill anyChar $ try $ char '\"'
   return $ StringToken string
 
+timePart :: String -> Integer -> Integer -> Parser Integer
+timePart mark prevDate coef = do
+  maybeDate <- (try $ do
+                 numberString <- many1 digit
+                 string mark
+                 notFollowedBy letter
+                 return $ read numberString) <|> return 0
+  return $ prevDate + maybeDate * coef
+         
+timeLexer :: Parser (Tagged Token) -- TODO Empty case
+timeLexer = taggedParser $ do
+  whiteSpaceLexer
+  char '#'
+  afterYears <- timePart "Y" 0 (365*24*60*60*1000)
+  afterMonths <- timePart "M" afterYears (30*24*60*60*1000)
+  afterDays <- timePart "D" afterMonths (24*60*60*1000)
+  afterHours <- timePart "h" afterDays (60*60*1000)
+  afterMinutes <- timePart "m" afterHours (60*1000)
+  afterSeconds <- timePart "s" afterMinutes 1000
+  afterMSeconds <- timePart "ms" afterSeconds 1
+  return $ TimeToken afterMSeconds
+       
 identifierLexer :: Parser (Tagged Token)
 identifierLexer = taggedParser $ do
   whiteSpaceLexer
@@ -98,6 +120,7 @@ tokenLexer :: Parser (Tagged Token)
 tokenLexer = choice $ [try multiLineCommentLexer
                       ,try lineCommentLexer
                       ,try stringLexer
+                      ,try timeLexer
                       ,try numberLexer]
               ++ keywordLexers
               ++ symbolLexers

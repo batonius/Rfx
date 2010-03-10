@@ -46,6 +46,7 @@ data SynExpr = NumSynExpr Int
              | FunSynExpr String [SynExpr]
              | StringSynExpr String
              | BoolSynExpr Bool
+             | TimeSynExpr Integer -- ms 
                deriving (Show, Eq, Ord)
 
 data SemExpr = NumSemExpr Int
@@ -55,6 +56,7 @@ data SemExpr = NumSemExpr Int
              | FunSemExpr ()
              | StringSemExpr String
              | BoolSemExpr Bool
+             | TimeSemExpr Integer -- ms
              deriving (Show, Eq, Ord)
           
 data (Expression e) => ProgramPos e = InGlobal
@@ -87,39 +89,47 @@ instance Expression e => Eq (ThreadState e) where
     (==) a b = (stateName a) == (stateName b)
                                     
 data SynOper = PlusSynOp
-          | MinusSynOp
-          | MulSynOp
-          | DivSynOp
-          | EqlSynOp
-          | GrSynOp
-          | LsSynOp
-          | GrEqSynOp
-          | LsEqSynOp
-          | AndSynOp
-          | OrSynOp
-          | XorSynOp
+             | MinusSynOp
+             | MulSynOp
+             | DivSynOp
+             | EqlSynOp
+             | NEqlSynOp
+             | GrSynOp
+             | LsSynOp
+             | GrEqSynOp
+             | LsEqSynOp
+             | AndSynOp
+             | OrSynOp
+             | XorSynOp
             deriving (Show, Eq, Ord)
 
 data SemOper = NumPlusSemOp
              | NumMinusSemOp
              | NumMulSemOp
-             | TimePlusSemOp
-             | StringPlusSemOp
-             | NumMinuxSemOp
              | NumEqlSemOp
              | NumNEqlSemOp
              | NumGrSemOp
              | NumLsSemOp
+             | NumGrEqlSemOp
+             | NumLsEqlSemOp
              | NumDivSemOp
              | BoolAndSemOp
              | BoolOrSemOp
              | BoolXorSemOp
+             | TimePlusSemOp
+             | TimeMinusSemOp
+             | TimeEqlSemOp
+             | TimeNEqlSemOp
+             | TimeGrSemOp
+             | TimeLsSemOp
+             | TimeGrEqlSemOp
+             | TimeLsEqlSemOp
                deriving (Show, Eq, Ord)
                      
 data VarType = Int8Type
              | BoolType
              | StringType
-             | DateTimeType
+             | TimeType
              | AnyType
                deriving (Show, Eq, Ord)
 
@@ -151,9 +161,10 @@ class (Eq e
 instance Expression SynExpr where
     type Variable SynExpr = VarName
     type VariableType SynExpr = VarTypeName
-    constExpr (NumSynExpr _) = True
-    constExpr (StringSynExpr _) = True
-    constExpr (BoolSynExpr _) = True
+    constExpr NumSynExpr{} = True
+    constExpr StringSynExpr{} = True
+    constExpr BoolSynExpr{} = True
+    constExpr TimeSynExpr{} = True
     constExpr _ = False
     opExpr OpSynExpr{} = True
     opExpr _ = False
@@ -165,9 +176,10 @@ instance Expression SynExpr where
 instance Expression SemExpr where
     type Variable SemExpr = Var SemExpr
     type VariableType SemExpr = VarType
-    constExpr (NumSemExpr _) = True
-    constExpr (StringSemExpr _) = True
-    constExpr (BoolSemExpr _) = True
+    constExpr NumSemExpr{} = True
+    constExpr StringSemExpr{} = True
+    constExpr BoolSemExpr{} = True
+    constExpr TimeSemExpr{} = True
     constExpr _ = False
     opExpr OpSemExpr{} = True
     opExpr _ = False
@@ -189,21 +201,24 @@ getVarType :: String -> Maybe VarType
 getVarType s = Map.lookup s $ Map.fromList $
                [ ("int8", Int8Type)
                , ("bool", BoolType)
+               , ("string", StringType)
+               , ("time", TimeType)
                , ("ЦЕЛ8", Int8Type)
                , ("ЛОГ", BoolType)
-               , ("string", StringType)
-               , ("СТРОКА", StringType)]
+               , ("СТРОКА", StringType)
+               , ("ВРЕМЯ", TimeType)]
 
 opTypes :: Map.Map SynOper [SemOper]
-opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp])
-                       ,(MinusSynOp, [NumMinusSemOp])
+opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp, TimePlusSemOp])
+                       ,(MinusSynOp, [NumMinusSemOp, TimeMinusSemOp])
                        ,(MulSynOp, [NumMulSemOp])
                        ,(DivSynOp, [NumDivSemOp])
-                       ,(EqlSynOp, [NumEqlSemOp])
-                       ,(GrSynOp, [NumGrSemOp])
-                       ,(LsSynOp, [NumLsSemOp])
-                       ,(GrEqSynOp, [])
-                       ,(LsEqSynOp, [])
+                       ,(EqlSynOp, [NumEqlSemOp, TimeEqlSemOp])
+                       ,(NEqlSynOp, [NumNEqlSemOp, TimeNEqlSemOp])
+                       ,(GrSynOp, [NumGrSemOp, TimeGrSemOp])
+                       ,(LsSynOp, [NumLsSemOp, TimeLsSemOp])
+                       ,(GrEqSynOp, [NumGrEqlSemOp, TimeGrEqlSemOp])
+                       ,(LsEqSynOp, [NumLsEqlSemOp, TimeLsEqlSemOp])
                        ,(AndSynOp, [BoolAndSemOp])
                        ,(OrSynOp, [BoolOrSemOp])
                        ,(XorSynOp, [BoolXorSemOp])]
@@ -211,15 +226,25 @@ opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp])
 
 semOpTypes :: [(SemOper, (VarType, VarType, VarType))]
 semOpTypes =[(NumPlusSemOp, (Int8Type, Int8Type, Int8Type))
-            ,(StringPlusSemOp, (StringType, StringType, StringType))
             ,(NumMinusSemOp, (Int8Type, Int8Type, Int8Type))
             ,(NumMulSemOp, (Int8Type, Int8Type, Int8Type))
             ,(NumEqlSemOp, (Int8Type, Int8Type, BoolType))
             ,(NumLsSemOp, (Int8Type, Int8Type, BoolType))
             ,(NumGrSemOp, (Int8Type, Int8Type, BoolType))
+            ,(NumLsEqlSemOp, (Int8Type, Int8Type, BoolType))
+            ,(NumGrEqlSemOp, (Int8Type, Int8Type, BoolType))
             ,(NumNEqlSemOp, (Int8Type, Int8Type, Int8Type))
             ,(NumDivSemOp, (Int8Type, Int8Type, Int8Type))
             ,(BoolAndSemOp, (BoolType, BoolType, BoolType))
             ,(BoolOrSemOp, (BoolType, BoolType, BoolType))
-            ,(BoolXorSemOp, (BoolType, BoolType, BoolType))]
+            ,(BoolXorSemOp, (BoolType, BoolType, BoolType))
+            ,(TimePlusSemOp, (TimeType, TimeType, TimeType))
+            ,(TimeMinusSemOp, (TimeType, TimeType, TimeType))
+            ,(TimeEqlSemOp, (TimeType, TimeType, BoolType))
+            ,(TimeLsSemOp, (TimeType, TimeType, BoolType))
+            ,(TimeGrSemOp, (TimeType, TimeType, BoolType))
+            ,(TimeLsEqlSemOp, (TimeType, TimeType, BoolType))
+            ,(TimeGrEqlSemOp, (TimeType, TimeType, BoolType))
+            ,(TimeNEqlSemOp, (TimeType, TimeType, TimeType))
+            ]
                                   

@@ -17,6 +17,7 @@ instance Eq a => Eq (Tagged a) where
 
 data Token = NumberToken Int        -- Number
            | StringToken String
+           | TimeToken Integer
            | PlusToken              -- +
            | MinusToken             -- -
            | AsteriskToken          -- *
@@ -24,6 +25,7 @@ data Token = NumberToken Int        -- Number
            | LParToken              -- (
            | RParToken              -- )
            | EqualToken             -- ==
+           | NEqualToken            -- !=
            | GrToken
            | LsToken
            | GrEqToken
@@ -103,6 +105,7 @@ symbolTokens = [ ("+", PlusToken)
                , (">=", GrEqToken)
                , ("<=", LsEqToken)
                , ("==", EqualToken)
+               , ("!=", NEqualToken)
                , ("=", AssignToken)
                , (";", SemicolonToken)
                , (">", GrToken)

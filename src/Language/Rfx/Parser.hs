@@ -133,6 +133,7 @@ exprParser = do
   expr <- choice [try opExprParser
                 ,try numExprParser
                 ,try boolExprParser
+                ,try timeExprParser
                 ,try funExprParser
                 ,try varExprParser
                 ,try subExprParser
@@ -163,7 +164,12 @@ boolExprParser = do
   return $ BoolSynExpr $ case boolToken of
                            TrueToken -> True
                            FalseToken -> False
-         
+
+timeExprParser :: TokenParser SynExpr
+timeExprParser = do
+  (TimeToken time) <- timeParser
+  return $ TimeSynExpr time
+                           
 subExprParser :: TokenParser SynExpr
 subExprParser = do
   tokenParser LParToken
@@ -182,6 +188,7 @@ tokenOps = [ (PlusToken, PlusSynOp)
            , (AsteriskToken, MulSynOp)
            , (SlashToken, DivSynOp)
            , (EqualToken, EqlSynOp)
+           , (NEqualToken, NEqlSynOp)
            , (GrToken, GrSynOp)
            , (LsToken, LsSynOp)
            , (GrEqToken, GrEqSynOp)
@@ -194,6 +201,7 @@ opExprParser :: TokenParser SynExpr
 opExprParser = do
   lexpr <- choice [try numExprParser
                  ,try boolExprParser
+                 ,try timeExprParser
                  ,try funExprParser
                  ,try varExprParser
                  ,try subExprParser
@@ -266,6 +274,11 @@ boolParser :: TokenParser Token
 boolParser = tokenTestParser(\x -> case x of
                                     TrueToken -> True
                                     FalseToken -> True
+                                    _ -> False)
+
+timeParser :: TokenParser Token
+timeParser = tokenTestParser(\x -> case x of
+                                    (TimeToken _) -> True
                                     _ -> False)
                                            
 setVarsScope :: ProgramPos SynExpr -> [Var SynExpr] -> [Var SynExpr]

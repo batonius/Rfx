@@ -170,6 +170,8 @@ statmentCompiler (FunSt fun) = do
 exprCompiler :: SemExpr -> Compiler ()
 exprCompiler (NumSemExpr n) = addString $ (show n) ++ " "
 
+exprCompiler (TimeSemExpr t) = addString $ (show t) ++ " "                              
+
 exprCompiler (StringSemExpr s) = addString $ "\"" ++ s ++ "\" "
 
 exprCompiler (BoolSemExpr b) = addString $ if b then "1 " else  "0 "
@@ -190,16 +192,27 @@ exprCompiler (OpSemExpr op le re) = do
     else do
       exprCompiler le
       addString $ case op of
-                    NumPlusSemOp     -> "+ "
-                    NumMinusSemOp    -> "- "
-                    NumMulSemOp      -> "* "
-                    NumEqlSemOp      -> "== "
-                    NumGrSemOp       -> "> "
-                    NumLsSemOp       -> "< "
-                    NumDivSemOp      -> "/ "
-                    BoolAndSemOp     -> "&& "
-                    BoolOrSemOp      -> "|| "
-                    _          -> ""
+                    NumPlusSemOp   -> "+ "
+                    NumMinusSemOp  -> "- "
+                    NumMulSemOp    -> "* "
+                    NumEqlSemOp    -> "== "
+                    NumNEqlSemOp   -> "!="
+                    NumGrSemOp     -> "> "
+                    NumGrEqlSemOp  -> ">= "
+                    NumLsSemOp     -> "< "
+                    NumLsEqlSemOp  -> "<= "
+                    NumDivSemOp    -> "/ "
+                    BoolAndSemOp   -> "&& "
+                    BoolOrSemOp    -> "|| "
+                    TimePlusSemOp  -> "+ "
+                    TimeMinusSemOp -> "- "
+                    TimeEqlSemOp   -> "== "
+                    TimeNEqlSemOp  -> "!= "
+                    TimeGrSemOp    -> "> "
+                    TimeLsSemOp    -> "< "
+                    TimeGrEqlSemOp -> ">= "
+                    TimeLsEqlSemOp -> "<= "
+                    _              -> ""
       exprCompiler re
 
 exprCompiler (FunSemExpr ()) = do
@@ -223,6 +236,8 @@ varCompiler v = do
 typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ case tp of
                                 StringType -> "char*"
+                                TimeType -> "long int"
+                                BoolType -> "int"
                                 _ -> "int"
 
 varDefenitionCompiler :: Var SemExpr -> Compiler ()

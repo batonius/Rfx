@@ -70,9 +70,10 @@ usedVars _ = []
 typeOfExpr :: Program SemExpr -> ProgramPos SemExpr -> SemExpr -> VarType
 typeOfExpr _ _ (NumSemExpr _) = Int8Type -- TODO
 typeOfExpr _ _ (BoolSemExpr _) = BoolType
+typeOfExpr _ _ (TimeSemExpr _) = TimeType
+typeOfExpr _ _ (StringSemExpr _) = StringType
 typeOfExpr _ _ (VarSemExpr Var{varType}) = varType
 typeOfExpr pr scope (SubSemExpr se) = typeOfExpr pr scope se
-typeOfExpr _ _ (StringSemExpr _) = StringType
 typeOfExpr _ _ (OpSemExpr semOp _ _ ) = opType
     where (_ , (_, _, opType)) = let ops = filter ((==semOp).fst) semOpTypes
                                  in if null ops
@@ -127,6 +128,7 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' pr _ (NumSynExpr n) = NumSemExpr n
       validateExpr' pr _ (BoolSynExpr b) = BoolSemExpr b
       validateExpr' pr _ (StringSynExpr s) = StringSemExpr s
+      validateExpr' pr _ (TimeSynExpr t) = TimeSemExpr t
       validateExpr' pr scope (VarSynExpr varName) = VarSemExpr $ varByName pr scope varName
       validateExpr' pr _ (FunSynExpr _ _ ) = FunSemExpr () -- TODO
       validateExpr' pr scope (SubSynExpr e) = SubSemExpr $ validateExpr' pr scope e
@@ -177,6 +179,7 @@ priorityList = [[AndSynOp
                 ,OrSynOp
                 ,XorSynOp]
                ,[EqlSynOp
+                ,NEqlSynOp
                 ,GrSynOp
                 ,LsSynOp
                 ,GrEqSynOp
