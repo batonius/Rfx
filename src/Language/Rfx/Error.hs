@@ -77,6 +77,8 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | AssignWrongType (Statment SynExpr)
                   | OpSemExc SynExpr
                   | NoSuchVarSemExc VarName
+                  | NoSuchFuncSemExc FuncName
+                  | FuncCallWrongType (Func SemExpr) SourcePos
                     deriving Typeable
 
 instance Exception SemException where
@@ -101,6 +103,8 @@ instance Show SemException where
     show (NoSuchThreadSemExc thName pos) = "No such thread " ++ thName ++ " at " ++ (show pos)
     show (NoSuchStateSemExc thName stName pos) = "No such state " ++ stName ++ " in thread " ++ thName
                                                  ++ " at " ++ (show pos)
+    show (NoSuchFuncSemExc (FuncName fn pos)) = "No such function " ++ fn ++ " at " ++ (show pos)
+    show (FuncCallWrongType func pos) = "Wrong types of arguments of function " ++ (funcName func) ++ " at " ++ (show pos)
     show (AssignWrongType (AssignSt varName _)) = case varName of
                                                             VarName _ pos -> "Wrong type of rvalue at " ++ (show pos)
                                                             LongVarName _ _ pos -> "Wrong type of rvalue at " ++ (show pos)
@@ -112,6 +116,8 @@ instance Lined SemException where
     getErrorLine (VarAlreadyExistsSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
     getErrorLine (NoSuchTypeSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
     getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos
+    getErrorLine (NoSuchFuncSemExc (FuncName _ pos)) = sourceLine pos
+    getErrorLine (FuncCallWrongType _ pos) = sourceLine pos
     getErrorLine (NoSuchVarSemExc varName) = case varName of
                                                VarName _ pos -> sourceLine pos
                                                LongVarName _ _ pos -> sourceLine pos

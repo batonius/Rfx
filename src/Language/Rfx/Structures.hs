@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies,FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies,FlexibleContexts,NamedFieldPuns #-}
 module Language.Rfx.Structures(Program(..),
                                Thread(..),
                                ThreadState(..),
@@ -13,10 +13,17 @@ module Language.Rfx.Structures(Program(..),
                                ProgramPos(..),
                                VarName(..),
                                VarTypeName(..),
+                               Func(..),
+                               FuncName(..),
+                               funcName,
+                               buildinFunc,
+                               funcRetType,
+                               funcArgsTypes,
                                opTypes,
                                semOpTypes,
                                posChildOf,
-                               getVarType)
+                               getVarType,
+                               buildinFuncs)
 where
 import Language.Rfx.Util
 import Text.ParserCombinators.Parsec(SourcePos)
@@ -43,7 +50,7 @@ data SynExpr = NumSynExpr Int
              | OpSynExpr SynOper SynExpr SynExpr SourcePos
              | VarSynExpr VarName 
              | SubSynExpr SynExpr
-             | FunSynExpr String [SynExpr]
+             | FunSynExpr FuncName [SynExpr]
              | StringSynExpr String
              | BoolSynExpr Bool
              | TimeSynExpr Integer -- ms 
@@ -53,7 +60,7 @@ data SemExpr = NumSemExpr Int
              | OpSemExpr SemOper SemExpr SemExpr
              | VarSemExpr (Var SemExpr)
              | SubSemExpr SemExpr
-             | FunSemExpr ()
+             | FunSemExpr (Func SemExpr) [SemExpr]
              | StringSemExpr String
              | BoolSemExpr Bool
              | TimeSemExpr Integer -- ms
@@ -68,6 +75,7 @@ data (Expression e) => Program e = Program
     {
       programThreads :: [Thread e]
     , programVars :: [Var e]
+    , programFuncs :: [Func e]
     } deriving (Show, Eq)
 
 data (Expression e) => Thread e = Thread
@@ -134,7 +142,37 @@ data VarType = Int8Type
                deriving (Show, Eq, Ord)
 
 data VarTypeName = VarTypeName String deriving (Eq, Show, Ord)
-                        
+
+
+data (Expression e) => Func e = BuildinFunc
+    {
+      biFuncName     ::String
+    , biFuncArgs     ::[VarType]
+    , biFuncRetType  ::VarType
+    }
+                             | UserFunc
+    {
+      uFuncName      ::String
+    , uFuncArgs      ::[Var e]
+    , uFuncStatments ::[Statment e]
+    , uFuncRetType   ::VarType
+    }
+                               deriving (Show, Eq, Ord)
+
+data FuncName = FuncName String SourcePos deriving (Show, Eq, Ord)
+                                        
+funcName BuildinFunc{biFuncName} = biFuncName
+funcName UserFunc{uFuncName} = uFuncName
+
+buildinFunc BuildinFunc{} = True
+buildinFunc _ = False
+
+funcRetType BuildinFunc{biFuncRetType} = biFuncRetType
+funcRetType UserFunc{uFuncRetType} = uFuncRetType
+
+funcArgsTypes BuildinFunc{biFuncArgs} = biFuncArgs
+funcArgsTypes UserFunc{uFuncArgs} = map varType uFuncArgs
+
 data (Expression e) =>  Statment e = AssignSt (Variable e) e
     | IfSt e [Statment e]
     | IfElseSt e [Statment e] [Statment e]
@@ -142,6 +180,7 @@ data (Expression e) =>  Statment e = AssignSt (Variable e) e
     | NextSt (ThreadState e) SourcePos
     | BreakSt
     | FunSt e -- Expr == FunExpr
+    | ReturnSt e -- TODO support
       deriving (Show, Eq, Ord)
                
 class (Eq e
@@ -247,4 +286,8 @@ semOpTypes =[(NumPlusSemOp, (Int8Type, Int8Type, Int8Type))
             ,(TimeGrEqlSemOp, (TimeType, TimeType, BoolType))
             ,(TimeNEqlSemOp, (TimeType, TimeType, TimeType))
             ]
-                                  
+
+buildinFuncs :: [Func SemExpr]
+buildinFuncs = [BuildinFunc{biFuncName="neg"
+                           ,biFuncArgs=[Int8Type]
+                           ,biFuncRetType=Int8Type}]

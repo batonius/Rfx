@@ -12,9 +12,11 @@ zeroPos = newPos "" 0 0
 validateProgram :: Program SynExpr -> Program SemExpr
 validateProgram Program{programThreads=prThs, programVars=prVrs} = program'
     where program = Program{programVars=validateVars program prVrs
-                           ,programThreads=map (validateThread program) prThs}
-          program' = Program{programThreads=(programThreads program),
-                             programVars=replaceVars program (programVars program)}
+                           ,programThreads=map (validateThread program) prThs
+                           ,programFuncs=buildinFuncs}
+          program' = Program{programThreads=(programThreads program)
+                            ,programVars=replaceVars program (programVars program)
+                            ,programFuncs=(programFuncs program)}
           replaceVars :: Program SemExpr -> [Var SemExpr] -> [Var SemExpr]
           replaceVars pr [] = []
           replaceVars pr (var@(Var{varScope}):vars) = var{varScope=trScope pr varScope} : (replaceVars pr vars)
@@ -39,7 +41,7 @@ validateVars pr vars = validateVars' vars [] where
     validateVars' [] vVars = vVars
     validateVars' (var@Var{varScope, varInitValue,
                            varType=(VarTypeName varType), varName, varSourcePos}:uVars) vVars =
-      let pr' = Program{programThreads=[], programVars=vVars}
+      let pr' = Program{programThreads=[], programVars=vVars, programFuncs=[]}
           vInitVal = validateExpr pr' InGlobal varInitValue
           vScope = transScope pr varScope
           maybeVarType = getVarType varType
@@ -64,7 +66,7 @@ usedVars :: SemExpr -> [Var SemExpr]
 usedVars (VarSemExpr var) = [var]
 usedVars (OpSemExpr _ leftExpr rightExpr ) = (usedVars leftExpr) ++ (usedVars rightExpr)
 usedVars (SubSemExpr subExpr) = usedVars subExpr
-usedVars (FunSemExpr ()) = [] -- TODO
+usedVars (FunSemExpr _ args) = concat $ map usedVars args
 usedVars _ = []
 
 typeOfExpr :: Program SemExpr -> ProgramPos SemExpr -> SemExpr -> VarType
@@ -73,6 +75,7 @@ typeOfExpr _ _ (BoolSemExpr _) = BoolType
 typeOfExpr _ _ (TimeSemExpr _) = TimeType
 typeOfExpr _ _ (StringSemExpr _) = StringType
 typeOfExpr _ _ (VarSemExpr Var{varType}) = varType
+typeOfExpr _ _ (FunSemExpr func _ ) = funcRetType func
 typeOfExpr pr scope (SubSemExpr se) = typeOfExpr pr scope se
 typeOfExpr _ _ (OpSemExpr semOp _ _ ) = opType
     where (_ , (_, _, opType)) = let ops = filter ((==semOp).fst) semOpTypes
@@ -101,6 +104,12 @@ stateByName pr thName stName pos = let states = filter (\ThreadState{stateName} 
                                       then throw $ NoSuchStateSemExc thName stName pos
                                       else head states
 
+funcByName :: Program SemExpr -> FuncName -> Func SemExpr
+funcByName ~Program{programFuncs} fun@(FuncName fn pos) = let funcs = filter ((==fn).funcName) programFuncs
+                                                          in if null funcs
+                                                             then throw $ NoSuchFuncSemExc fun
+                                                             else head $ funcs
+                                           
 varByName :: Program SemExpr -> ProgramPos SemExpr -> VarName -> Var SemExpr
 varByName ~pr@Program{programVars} scope varName  =
     case varName of
@@ -130,7 +139,12 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' pr _ (StringSynExpr s) = StringSemExpr s
       validateExpr' pr _ (TimeSynExpr t) = TimeSemExpr t
       validateExpr' pr scope (VarSynExpr varName) = VarSemExpr $ varByName pr scope varName
-      validateExpr' pr _ (FunSynExpr _ _ ) = FunSemExpr () -- TODO
+      validateExpr' pr scope (FunSynExpr f@(FuncName fn pos) args ) = let vArgs = map (validateExpr' pr scope) args
+                                                                          fun :: Func SemExpr
+                                                                          fun = funcByName pr f
+                                                                      in if (funcArgsTypes fun) == (map (typeOfExpr pr scope) vArgs)
+                                                                         then FunSemExpr fun vArgs
+                                                                         else throw $ FuncCallWrongType fun pos
       validateExpr' pr scope (SubSynExpr e) = SubSemExpr $ validateExpr' pr scope e
       validateExpr' pr scope exp@(OpSynExpr op lExpr rExpr _) =
           let vlExpr = validateExpr' pr scope lExpr
@@ -174,6 +188,9 @@ validateStatment pr scope st@(AssignSt varName expr) = let valExpr = validateExp
                                                        in if (varType var == valType)
                                                           then AssignSt var valExpr
                                                           else throw $ AssignWrongType st
+
+validateStatment pr scope st@(FunSt e) = FunSt $ validateExpr pr scope e
+                                                               
 priorityList :: [[SynOper]]
 priorityList = [[AndSynOp
                 ,OrSynOp
@@ -192,6 +209,7 @@ priorityList = [[AndSynOp
 
 applyOpPriority :: SynExpr -> SynExpr
 applyOpPriority (SubSynExpr e) = SubSynExpr $ applyOpPriority e
+applyOpPriority (FunSynExpr fun args) = FunSynExpr fun $ map (dropSubExpr.applyOpPriority) args
 applyOpPriority oe@(OpSynExpr op le re pos) = if opExpr re
                                               then applyOpPriority' priorityList oe oe
                                               else OpSynExpr op (applyOpPriority le) (applyOpPriority re) pos
@@ -225,6 +243,7 @@ dropSubExpr e = let dse = dropSubExpr' e
       dropSubExpr' (SubSynExpr (SubSynExpr se)) = dropSubExpr' $ SubSynExpr se
       dropSubExpr' (SubSynExpr se) = if constExpr se || varExpr se then se
                                      else SubSynExpr $ dropSubExpr' se
+      dropSubExpr' (FunSynExpr fun args) = FunSynExpr fun $ map dropSubExpr' args
       dropSubExpr' se = se
                     
                    

@@ -22,7 +22,8 @@ programParser = do
   programThreads <- many1 threadParser
   thVars <- getState
   return $ Program{programThreads
-                  ,programVars=(setVarsScope InGlobal vars)++thVars}
+                  ,programVars=(setVarsScope InGlobal vars)++thVars
+                  ,programFuncs=[]}
 
 addVars :: [Var SynExpr] -> TokenParser ()
 addVars vars = do
@@ -142,11 +143,12 @@ exprParser = do
 
 funExprParser :: TokenParser SynExpr
 funExprParser = do
+  pos <- getPosition
   (IdentifierToken funName) <- identifierParser
   tokenParser LParToken
   args <- sepBy exprParser (tokenParser CommaToken)
   tokenParser RParToken
-  return $ FunSynExpr funName args
+  return $ FunSynExpr (FuncName funName pos) args
 
 numExprParser :: TokenParser SynExpr
 numExprParser = do

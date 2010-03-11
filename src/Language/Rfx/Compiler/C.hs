@@ -215,19 +215,18 @@ exprCompiler (OpSemExpr op le re) = do
                     _              -> ""
       exprCompiler re
 
-exprCompiler (FunSemExpr ()) = do
-  addString "Fun goes here"
-  -- addString funName
-  -- addString "("
-  -- let addArg [] = addString ")"
-  --     addArg [a] = do
-  --       exprCompiler a
-  --       addString ")"
-  --     addArg (a:as) = do
-  --       exprCompiler a
-  --       addString ", "
-  --       addArg as
-  -- addArg args
+exprCompiler (FunSemExpr func args) = do
+  addString (funcName func)
+  addString "("
+  let addArg [] = addString ")"
+      addArg [a] = do
+        exprCompiler a
+        addString ")"
+      addArg (a:as) = do
+        exprCompiler a
+        addString ", "
+        addArg as
+  addArg args
 
 varCompiler :: Var SemExpr -> Compiler ()
 varCompiler v = do
