@@ -1,11 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables,ExistentialQuantification #-}
 import Graphics.UI.Gtk hiding (fill)
-import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.SourceView
-import Control.Monad.Trans(liftIO)
 import Control.Monad
-import Graphics.UI.Gtk.Buttons.Button
-import Graphics.UI.Gtk.Buttons.CheckButton
 import Language.Rfx.Compiler
 import Language.Rfx.Validator
 import Language.Rfx.Lexer
@@ -13,27 +9,41 @@ import Language.Rfx.Parser
 import Language.Rfx.Error
 import Control.Exception 
 import Prelude hiding (catch)
-    
-compileString :: String -> IO (Either (Int,String) String)
-compileString string = do
-  ret <- evaluate $ compileProgram defaultCompilerOptions
-        $ validateProgram
-        $ parseProgram
-        $ lexString string
+
+onlyLexer :: String -> String
+onlyLexer = show . lexString
+
+onlyParser :: String -> String
+onlyParser = show . parseProgram . lexString
+
+onlyValidator :: String -> String
+onlyValidator = show . validateProgram . parseProgram . lexString
+                
+fullCompiler :: String -> String
+fullCompiler = compileProgram defaultCompilerOptions . validateProgram . parseProgram . lexString
+                
+compileString :: Int -> String -> IO (Either (Int,String) String)
+compileString index string = do
+  let compiler = [fullCompiler, onlyValidator, onlyParser, onlyLexer] !! index
+  ret <- evaluate $ compiler string
   return $ Right ret
 
-doCompile :: String -> IO (Either (Int,String) String)
-doCompile string = (compileString string) `Control.Exception.catch`
-                   (\ (ex::RfxException) -> return $ Left ((getErrorLine ex), "Lol i catch: " ++ (show ex)))
+doCompile :: Int -> String -> IO (Either (Int,String) String)
+doCompile compIndex string = ((compileString compIndex string)
+                              `Control.Exception.catch`
+                              (\ (ex::RfxException) -> return $ Left ((getErrorLine ex), "Lol i catch: " ++ (show ex))))
+                             `Control.Exception.catch`
+                             (\ (ex::SomeException) -> return $ Left (0, "Something wrong, lol" ++ (show ex)))
 
-compileBuffers rfxSourceView resSourceView = do
+compileBuffers combo rfxSourceView resSourceView = do
     rfxBuffer <- textViewGetBuffer rfxSourceView
     resBuffer <- textViewGetBuffer resSourceView
     startIter <- textBufferGetStartIter rfxBuffer
     endIter <- textBufferGetEndIter rfxBuffer
     textBufferRemoveTagByName rfxBuffer "Error" startIter endIter
     inText <- get rfxBuffer textBufferText
-    compiledText <- doCompile inText
+    index <- get combo comboBoxActive
+    compiledText <- doCompile index inText 
     case compiledText of
       Right text -> set resBuffer [textBufferText := text]
       Left (line, text) -> do
@@ -68,6 +78,10 @@ main = do
   autoCompileCheckButton <- checkButtonNewWithLabel "Auto compile"
   set autoCompileCheckButton [ toggleButtonActive := True ]
   compileButton <- buttonNewWithLabel "Compile"
+  outputComboBox <- comboBoxNewText
+  mapM_ (comboBoxAppendText outputComboBox)
+       ["Compiler", "Validator", "Parser", "Lexer"]
+  comboBoxSetActive outputComboBox 0
   buttonBox <- hButtonBoxNew
   languageManager <- sourceLanguageManagerNew
   cLanguage <- sourceLanguageManagerGetLanguage languageManager "c"
@@ -92,7 +106,9 @@ main = do
   buttonBoxSetLayout buttonBox ButtonboxStart
   mapM_ (boxPackStartDefaults buttonBox)
         [openButton, saveButton, compileButton
-        , toButton autoCompileCheckButton, quitButton]
+        , toButton autoCompileCheckButton]
+  boxPackStartDefaults buttonBox outputComboBox
+  boxPackStartDefaults buttonBox quitButton 
   buttonBoxSetChildSecondary buttonBox quitButton True
   boxPackStart vBox buttonBox PackNatural 0
   rfxScrolledWindow <- scrolledWindowNew Nothing Nothing
@@ -118,12 +134,13 @@ main = do
          buffer <- textViewGetBuffer rfxSourceView
          fileString <- get buffer textBufferText
          writeFile path fileString
-  onClicked compileButton $ compileBuffers rfxSourceView resSourceView
+  onClicked compileButton $ compileBuffers outputComboBox rfxSourceView resSourceView
   rfxBuffer <- textViewGetBuffer rfxSourceView
   onBufferChanged rfxBuffer $ do
     autoCompile <- get autoCompileCheckButton toggleButtonActive
     if autoCompile 
-      then compileBuffers rfxSourceView resSourceView
+      then compileBuffers outputComboBox rfxSourceView resSourceView
       else return ()
+  outputComboBox `on` changed $  compileBuffers outputComboBox rfxSourceView resSourceView
   widgetShowAll window
   mainGUI    

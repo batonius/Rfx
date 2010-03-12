@@ -10,17 +10,18 @@ import Control.Exception hiding (try)
 zeroPos = newPos "" 0 0
     
 validateProgram :: Program SynExpr -> Program SemExpr
-validateProgram Program{programThreads=prThs, programVars=prVrs} = program'
+validateProgram Program{programThreads=prThs, programVars=prVrs, programFuncs=prFuncs} = program'
     where program = Program{programVars=validateVars program prVrs
                            ,programThreads=map (validateThread program) prThs
-                           ,programFuncs=buildinFuncs}
+                           ,programFuncs=buildinFuncs++(map (validateFunc program) prFuncs)}
           program' = Program{programThreads=(programThreads program)
                             ,programVars=replaceVars program (programVars program)
                             ,programFuncs=(programFuncs program)}
           replaceVars :: Program SemExpr -> [Var SemExpr] -> [Var SemExpr]
-          replaceVars pr [] = []
+          replaceVars _ [] = []
           replaceVars pr (var@(Var{varScope}):vars) = var{varScope=trScope pr varScope} : (replaceVars pr vars)
-          trScope pr InGlobal = InGlobal
+          trScope _ InGlobal = InGlobal
+          trScope pr (InFunction f) = InFunction (funcByName pr (FuncName (funcName f) zeroPos))
           trScope pr (InThread Thread{threadName}) = InThread $ threadByName pr threadName zeroPos
           trScope pr (InState Thread{threadName} ThreadState{stateName}) =
               InState (threadByName pr threadName zeroPos) (stateByName pr threadName stateName zeroPos)
@@ -40,27 +41,24 @@ validateVars pr vars = validateVars' vars [] where
     validateVars' :: [Var SynExpr] -> [Var SemExpr] -> [Var SemExpr]
     validateVars' [] vVars = vVars
     validateVars' (var@Var{varScope, varInitValue,
-                           varType=(VarTypeName varType), varName, varSourcePos}:uVars) vVars =
+                           varType=varType, varName, varSourcePos}:uVars) vVars =
       let pr' = Program{programThreads=[], programVars=vVars, programFuncs=[]}
           vInitVal = validateExpr pr' InGlobal varInitValue
           vScope = transScope pr varScope
-          maybeVarType = getVarType varType
-      in case maybeVarType of
-           Nothing -> throw $ NoSuchTypeSemExc var varType
-           Just vVarType ->
-                if (not.null) $ usedVars vInitVal
-                then throw $ VarInVarInitSemExc var
-                else if (typeOfExpr pr' InGlobal vInitVal /= vVarType)
-                     then throw $ VarInitWrongTypeSemExc var
-                     else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
-                          in if (not.null)  sameVars
-                             then throw $ VarAlreadyExistsSemExc var (Language.Rfx.Structures.varSourcePos (head sameVars))
-                             else validateVars' uVars (Var{varName
-                                                          ,varType=vVarType
-                                                          ,varSourcePos
-                                                          ,varScope = vScope
-                                                          ,varInitValue = vInitVal}
-                                                       :vVars)
+          vVarType = validateType varType varSourcePos
+      in if (not.null) $ usedVars vInitVal
+           then throw $ VarInVarInitSemExc var
+           else if (typeOfExpr pr' InGlobal vInitVal /= vVarType)
+                  then throw $ VarInitWrongTypeSemExc var
+                  else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
+                       in if (not.null)  sameVars
+                            then throw $ VarAlreadyExistsSemExc var (Language.Rfx.Structures.varSourcePos (head sameVars))
+                            else validateVars' uVars (Var{varName
+                                                         ,varType=vVarType
+                                                         ,varSourcePos
+                                                         ,varScope = vScope
+                                                         ,varInitValue = vInitVal}
+                                                      :vVars)
 
 usedVars :: SemExpr -> [Var SemExpr]
 usedVars (VarSemExpr var) = [var]
@@ -88,8 +86,9 @@ scopeVars scope = filter (\Var{varScope} -> scope `posChildOf` varScope)
 
 transScope :: Program SemExpr -> ProgramPos SynExpr -> ProgramPos SemExpr
 transScope _ InGlobal = InGlobal
-transScope pr (InThread Thread{threadName}) = InThread $ Thread {threadName, threadStates=[]}
-transScope pr (InState Thread{threadName} ThreadState{stateName}) =
+transScope _ (InFunction (FuncName f _)) = InFunction $ (UserFunc{uFuncName=f}::(Func SemExpr))
+transScope _ (InThread Thread{threadName}) = InThread $ Thread {threadName, threadStates=[]}
+transScope _ (InState Thread{threadName} ThreadState{stateName}) =
     InState (Thread{threadName, threadStates=[]}) (ThreadState {stateName, stateStatments=[]})
 
 threadByName :: Program SemExpr -> String -> SourcePos -> Thread SemExpr
@@ -105,20 +104,20 @@ stateByName pr thName stName pos = let states = filter (\ThreadState{stateName} 
                                       else head states
 
 funcByName :: Program SemExpr -> FuncName -> Func SemExpr
-funcByName ~Program{programFuncs} fun@(FuncName fn pos) = let funcs = filter ((==fn).funcName) programFuncs
+funcByName ~Program{programFuncs} fun@(FuncName fn _) = let funcs = filter ((==fn).funcName) programFuncs
                                                           in if null funcs
                                                              then throw $ NoSuchFuncSemExc fun
                                                              else head $ funcs
                                            
 varByName :: Program SemExpr -> ProgramPos SemExpr -> VarName -> Var SemExpr
-varByName ~pr@Program{programVars} scope varName  =
+varByName ~Program{programVars} scope varName  =
     case varName of
       VarName vName _-> let vars = filter (\Var{varName=n} -> vName == n)
                                    $ scopeVars scope programVars
                         in if null vars
                              then throw $ NoSuchVarSemExc varName
                              else head vars
-      LongVarName thName vName pos -> let vars = filter (\Var{varName, varScope} ->
+      LongVarName thName vName _ -> let vars = filter (\Var{varName, varScope} ->
                                                             case varScope of
                                                               InThread Thread{threadName} -> (thName==threadName)
                                                                        && (varName==vName)
@@ -130,21 +129,32 @@ varByName ~pr@Program{programVars} scope varName  =
                                            else head vars
 
 
+validateFunc :: Program SemExpr -> Func SynExpr -> Func SemExpr
+validateFunc pr UserFunc{uFuncName, uFuncArgs, uFuncStatments, uFuncRetType, uFuncPos} = func
+    where
+      func = UserFunc{uFuncName, uFuncArgs=vArgs, uFuncStatments=vStatments, uFuncRetType=vFuncType, uFuncPos}
+      vFuncType = validateType uFuncRetType uFuncPos
+      self = funcByName pr $ FuncName uFuncName uFuncPos 
+      vArgs = map (\Var{varName} -> varByName pr (InFunction self) (VarName varName uFuncPos)) uFuncArgs 
+      vStatments = map (validateStatment pr (InFunction func)) uFuncStatments
+
+validateFunc _ _ = error "Wut?"       
+                                                
 validateExpr :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
 validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPriority expr
     where
       validateExpr' :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
-      validateExpr' pr _ (NumSynExpr n) = NumSemExpr n
-      validateExpr' pr _ (BoolSynExpr b) = BoolSemExpr b
-      validateExpr' pr _ (StringSynExpr s) = StringSemExpr s
-      validateExpr' pr _ (TimeSynExpr t) = TimeSemExpr t
+      validateExpr' _ _ (NumSynExpr n) = NumSemExpr n
+      validateExpr' _ _ (BoolSynExpr b) = BoolSemExpr b
+      validateExpr' _ _ (StringSynExpr s) = StringSemExpr s
+      validateExpr' _ _ (TimeSynExpr t) = TimeSemExpr t
       validateExpr' pr scope (VarSynExpr varName) = VarSemExpr $ varByName pr scope varName
-      validateExpr' pr scope (FunSynExpr f@(FuncName fn pos) args ) = let vArgs = map (validateExpr' pr scope) args
-                                                                          fun :: Func SemExpr
-                                                                          fun = funcByName pr f
-                                                                      in if (funcArgsTypes fun) == (map (typeOfExpr pr scope) vArgs)
-                                                                         then FunSemExpr fun vArgs
-                                                                         else throw $ FuncCallWrongType fun pos
+      validateExpr' pr scope (FunSynExpr f@(FuncName _ pos) args ) = let vArgs = map (validateExpr' pr scope) args
+                                                                         fun :: Func SemExpr
+                                                                         fun = funcByName pr f
+                                                                     in if (funcArgsTypes fun) == (map (typeOfExpr pr scope) vArgs)
+                                                                        then FunSemExpr fun vArgs
+                                                                        else throw $ FuncCallWrongType fun pos
       validateExpr' pr scope (SubSynExpr e) = SubSemExpr $ validateExpr' pr scope e
       validateExpr' pr scope exp@(OpSynExpr op lExpr rExpr _) =
           let vlExpr = validateExpr' pr scope lExpr
@@ -189,7 +199,7 @@ validateStatment pr scope st@(AssignSt varName expr) = let valExpr = validateExp
                                                           then AssignSt var valExpr
                                                           else throw $ AssignWrongType st
 
-validateStatment pr scope st@(FunSt e) = FunSt $ validateExpr pr scope e
+validateStatment pr scope (FunSt e) = FunSt $ validateExpr pr scope e
                                                                
 priorityList :: [[SynOper]]
 priorityList = [[AndSynOp
@@ -215,7 +225,7 @@ applyOpPriority oe@(OpSynExpr op le re pos) = if opExpr re
                                               else OpSynExpr op (applyOpPriority le) (applyOpPriority re) pos
     where applyOpPriority' :: [[SynOper]] -> SynExpr -> SynExpr -> SynExpr
           applyOpPriority' [] exprHead (OpSynExpr eo le re pos) = (OpSynExpr eo le (applyOpPriority' [] exprHead re) pos)
-          applyOpPriority' [] exprHead e = applyOpPriority e
+          applyOpPriority' [] _ e = applyOpPriority e
           applyOpPriority' pl@(op:ops) exprHead oe@(OpSynExpr eo le re pos) = if eo `elem` op
                                                                               then let newLe = if exprHead == oe
                                                                                                then applyOpPriority le
@@ -226,7 +236,7 @@ applyOpPriority oe@(OpSynExpr op le re pos) = if opExpr re
                                                                                       (applyOpPriority' pl re re)
                                                                                       pos
                                                                               else applyOpPriority' pl exprHead re
-          applyOpPriority' (op:ops) exprHead _ = SubSynExpr $ applyOpPriority' ops exprHead exprHead
+          applyOpPriority' (_:ops) exprHead _ = SubSynExpr $ applyOpPriority' ops exprHead exprHead
           changeExprVar :: SynExpr -> SynExpr -> SynExpr -> SynExpr
           changeExprVar (SubSynExpr e) from to = SubSynExpr $ changeExprVar e from to
           changeExprVar (OpSynExpr op le re pos) from to = OpSynExpr op le (if re == from then to
@@ -245,5 +255,18 @@ dropSubExpr e = let dse = dropSubExpr' e
                                      else SubSynExpr $ dropSubExpr' se
       dropSubExpr' (FunSynExpr fun args) = FunSynExpr fun $ map dropSubExpr' args
       dropSubExpr' se = se
-                    
+
+validateType :: VarTypeName -> SourcePos -> VarType
+validateType (VarTypeName typeName) pos = case Map.lookup typeName
+                                             $ Map.fromList
+                                             $ [("int8", Int8Type)
+                                               ,("bool", BoolType)
+                                               ,("string", StringType)
+                                               ,("time", TimeType)
+                                               ,("ЦЕЛ8", Int8Type)
+                                               ,("ЛОГ", BoolType)
+                                               ,("СТРОКА", StringType)
+                                               ,("ВРЕМЯ", TimeType)]
+                                          of Nothing -> throw $ NoSuchTypeSemExc typeName pos
+                                             Just vVarType -> vVarType
                    

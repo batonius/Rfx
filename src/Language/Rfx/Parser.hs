@@ -3,10 +3,8 @@ module Language.Rfx.Parser(parseProgram)
 where
 import Language.Rfx.Tokens
 import Language.Rfx.Structures
-import Language.Rfx.Util
 import Language.Rfx.Error
 import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Pos
 import Control.Exception hiding (try)
 
 type TokenParser = GenParser (Tagged Token) [Var SynExpr] -- ParserState
@@ -19,11 +17,12 @@ parseProgram ts = case runParser programParser [] "" ts of
 programParser :: TokenParser (Program SynExpr)
 programParser = do
   vars <- many $ try $ varDefParser
+  funcs <- many $ try $ funcDefParser
   programThreads <- many1 threadParser
   thVars <- getState
   return $ Program{programThreads
                   ,programVars=(setVarsScope InGlobal vars)++thVars
-                  ,programFuncs=[]}
+                  ,programFuncs=funcs}
 
 addVars :: [Var SynExpr] -> TokenParser ()
 addVars vars = do
@@ -43,6 +42,31 @@ varDefParser = do
             ,varScope=InGlobal
             ,varSourcePos}
 
+funcDefParser :: TokenParser (Func SynExpr)
+funcDefParser = do
+    (Tagged funcSourcePos (IdentifierToken funcRetType)) <- taggedIdentifierParser
+    (IdentifierToken funcName) <- identifierParser
+    tokenParser LParToken
+    args <- (flip sepBy) (tokenParser CommaToken) $ do
+      (IdentifierToken varTypeName) <- identifierParser
+      (IdentifierToken varName) <- identifierParser
+      return $ Var{varName
+                  ,varType=VarTypeName varTypeName
+                  ,varScope=InFunction $ FuncName funcName funcSourcePos
+                  ,varSourcePos=funcSourcePos
+                  ,varInitValue=NumSynExpr 0 } -- TODO do it right
+    tokenParser RParToken
+    localVars <- many $ try varDefParser
+    statments <- manyTill statmentParser $ do
+      tokenParser EndToken
+      tokenParser SemicolonToken
+    addVars $ setVarsScope (InFunction (FuncName funcName funcSourcePos)) (args ++ localVars)
+    return $ UserFunc{uFuncName = funcName
+                     ,uFuncRetType = VarTypeName funcRetType
+                     ,uFuncArgs = args
+                     ,uFuncStatments = statments
+                     ,uFuncPos = funcSourcePos}
+  
 threadParser :: TokenParser (Thread SynExpr)
 threadParser = do
   tokenParser ThreadToken
@@ -78,7 +102,8 @@ statmentParser = do
                     ,try whileParser
                     ,try ifParser
                     ,try nextParser
-                    ,try funParser]
+                    ,try funParser
+                    ,try returnParser]
   tokenParser SemicolonToken
   return statment
 
@@ -129,6 +154,13 @@ funParser = do
   fun <- funExprParser
   return $ FunSt fun
 
+returnParser :: TokenParser (Statment SynExpr)
+returnParser = do
+  tokenParser ReturnToken
+  expr <- exprParser
+  return $ ReturnSt expr
+                
+-- Expressions 
 exprParser :: TokenParser SynExpr
 exprParser = do
   expr <- choice [try opExprParser
@@ -166,6 +198,7 @@ boolExprParser = do
   return $ BoolSynExpr $ case boolToken of
                            TrueToken -> True
                            FalseToken -> False
+                           _ -> error "Wut?"
 
 timeExprParser :: TokenParser SynExpr
 timeExprParser = do

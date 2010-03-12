@@ -44,6 +44,7 @@ data Token = NumberToken Int        -- Number
            | WhereToken             -- "where"
            | WhileToken             -- "while"
            | DoToken
+           | ReturnToken
            | CommaToken
            | BreakToken             -- "break"
            | TrueToken
@@ -71,6 +72,7 @@ keywordTokens =
     , ("DO", DoToken)
     , ("NEXT", NextToken)
     , ("BREAK", BreakToken)
+    , ("RETURN", ReturnToken)
     , ("TRUE", TrueToken)
     , ("FALSE", FalseToken)
     , ("AND", AndToken)
@@ -86,6 +88,7 @@ keywordTokens =
     , ("ТОГДА", ThenToken)
     , ("ПОКА", WhileToken)
     , ("ДЕЛАЙ", DoToken)
+    , ("ВЕРНИ", ReturnToken)
     , ("ПРЕРВАТЬ", BreakToken)
     , ("ДАЛЬШЕ", NextToken)
     , ("ИСТИНА", TrueToken)

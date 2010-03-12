@@ -5,7 +5,6 @@ import Language.Rfx.Structures
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Error
 import Data.Typeable
-import Data.List(nub)
 
 class Lined a where
     getErrorLine :: a -> Int
@@ -69,7 +68,7 @@ instance Lined SynException where
 data SemException = VarInVarInitSemExc (Var SynExpr)
                   | VarInitWrongTypeSemExc (Var SynExpr)
                   | VarAlreadyExistsSemExc (Var SynExpr) SourcePos
-                  | NoSuchTypeSemExc (Var SynExpr) String
+                  | NoSuchTypeSemExc String SourcePos
                   | NoSuchThreadSemExc String SourcePos
                   | NoSuchStateSemExc String String SourcePos
                   | IfNotBoolSemExc (Statment SynExpr)
@@ -98,8 +97,7 @@ instance Show SemException where
                                                                  ++ varName ++ " at " ++ (show varSourcePos)
     show (VarInVarInitSemExc (Var{varSourcePos, varName})) = "Variable in init expression of variable " ++ varName
                                                              ++ " at " ++ (show varSourcePos)
-    show (NoSuchTypeSemExc (Var{varName, varSourcePos}) varTypeName) = "No such type " ++ (varTypeName)
-                           ++ ", variable " ++ varName ++ " at " ++ (show varSourcePos)
+    show (NoSuchTypeSemExc typeName pos) = "No such type " ++ typeName ++ " at " ++ (show pos)
     show (NoSuchThreadSemExc thName pos) = "No such thread " ++ thName ++ " at " ++ (show pos)
     show (NoSuchStateSemExc thName stName pos) = "No such state " ++ stName ++ " in thread " ++ thName
                                                  ++ " at " ++ (show pos)
@@ -114,7 +112,7 @@ instance Lined SemException where
     getErrorLine (VarInVarInitSemExc (Var{varSourcePos})) = sourceLine varSourcePos + 1
     getErrorLine (VarInitWrongTypeSemExc (Var{varSourcePos})) = sourceLine varSourcePos + 1
     getErrorLine (VarAlreadyExistsSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
-    getErrorLine (NoSuchTypeSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
+    getErrorLine (NoSuchTypeSemExc _ pos) = sourceLine pos + 1
     getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos
     getErrorLine (NoSuchFuncSemExc (FuncName _ pos)) = sourceLine pos
     getErrorLine (FuncCallWrongType _ pos) = sourceLine pos

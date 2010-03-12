@@ -22,13 +22,11 @@ module Language.Rfx.Structures(Program(..),
                                opTypes,
                                semOpTypes,
                                posChildOf,
-                               getVarType,
                                buildinFuncs)
 where
-import Language.Rfx.Util
+import Language.Rfx.Util()
 import Text.ParserCombinators.Parsec(SourcePos)
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 
 data (Expression e) => Var e = Var
     {
@@ -69,6 +67,7 @@ data SemExpr = NumSemExpr Int
 data (Expression e) => ProgramPos e = InGlobal
                                    | InThread (Thread e)
                                    | InState (Thread e) (ThreadState e)
+                                   | InFunction (Function e)
                                      deriving (Show, Eq, Ord)
                                
 data (Expression e) => Program e = Program
@@ -143,22 +142,27 @@ data VarType = Int8Type
 
 data VarTypeName = VarTypeName String deriving (Eq, Show, Ord)
 
-
 data (Expression e) => Func e = BuildinFunc
     {
       biFuncName     ::String
     , biFuncArgs     ::[VarType]
-    , biFuncRetType  ::VarType
+    , biFuncRetType  ::(VariableType e)
     }
                              | UserFunc
     {
       uFuncName      ::String
     , uFuncArgs      ::[Var e]
     , uFuncStatments ::[Statment e]
-    , uFuncRetType   ::VarType
+    , uFuncRetType   ::(VariableType e)
+    , uFuncPos       ::SourcePos
     }
-                               deriving (Show, Eq, Ord)
+                               deriving (Show, Ord)
 
+instance (Expression e) => Eq (Func e) where
+    (==) BuildinFunc{biFuncName=biFuncNamel} BuildinFunc{biFuncName=biFuncNamer} = biFuncNamel == biFuncNamer
+    (==) UserFunc{uFuncName=uFuncNamel} UserFunc{uFuncName=uFuncNamer} = uFuncNamel == uFuncNamer
+    (==) _ _ = False
+                                        
 data FuncName = FuncName String SourcePos deriving (Show, Eq, Ord)
                                         
 funcName BuildinFunc{biFuncName} = biFuncName
@@ -189,9 +193,14 @@ class (Eq e
       ,Show (Variable e)
       ,Eq (VariableType e)
       ,Ord (VariableType e)
-      ,Show (VariableType e)) => Expression e where
+      ,Show (VariableType e)
+      ,Eq (Function e)
+      ,Ord (Function e)
+      ,Show (Function e)
+      ) => Expression e where
     type Variable e :: *
     type VariableType e :: *
+    type Function e :: *
     constExpr :: e -> Bool
     opExpr :: e -> Bool
     subExpr :: e -> Bool
@@ -200,6 +209,7 @@ class (Eq e
 instance Expression SynExpr where
     type Variable SynExpr = VarName
     type VariableType SynExpr = VarTypeName
+    type Function SynExpr = FuncName
     constExpr NumSynExpr{} = True
     constExpr StringSynExpr{} = True
     constExpr BoolSynExpr{} = True
@@ -215,6 +225,7 @@ instance Expression SynExpr where
 instance Expression SemExpr where
     type Variable SemExpr = Var SemExpr
     type VariableType SemExpr = VarType
+    type Function SemExpr = Func SemExpr
     constExpr NumSemExpr{} = True
     constExpr StringSemExpr{} = True
     constExpr BoolSemExpr{} = True
@@ -228,25 +239,20 @@ instance Expression SemExpr where
     varExpr _ = False
 
 posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
+posChildOf _ InGlobal = True
+posChildOf (InFunction f) (InFunction g) = f == g
+posChildOf (InFunction _) _ = False
+posChildOf _ (InFunction _) = False
 posChildOf a b = case b of
                  InGlobal -> True
                  InThread btn -> case a of
                                   InThread atn -> atn == btn
                                   InState atn _ -> atn == btn
                                   InGlobal -> False
+                                  InFunction _ -> False
                  InState _ _ -> a == b
+                 InFunction _ -> False
                                
-getVarType :: String -> Maybe VarType
-getVarType s = Map.lookup s $ Map.fromList $
-               [ ("int8", Int8Type)
-               , ("bool", BoolType)
-               , ("string", StringType)
-               , ("time", TimeType)
-               , ("ЦЕЛ8", Int8Type)
-               , ("ЛОГ", BoolType)
-               , ("СТРОКА", StringType)
-               , ("ВРЕМЯ", TimeType)]
-
 opTypes :: Map.Map SynOper [SemOper]
 opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp, TimePlusSemOp])
                        ,(MinusSynOp, [NumMinusSemOp, TimeMinusSemOp])
