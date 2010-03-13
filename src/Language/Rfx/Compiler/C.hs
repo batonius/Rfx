@@ -12,6 +12,9 @@ programCompiler program = do
   let threadsLen = length threads
   addLine "/*Rfx was here*/"
   addLine "#define XOR(x,y) ((x) ? !(y) : (y))"
+  addLine "#define BOOL int"
+  addLine "#define TRUE 1"
+  addLine "#define FALSE 0"
   addLine $ "#define __RFX_THREAD_COUNT " ++ (show $ threadsLen)
   addLine $ "enum __rfx_threads {"
   addIndent
@@ -185,10 +188,12 @@ statmentCompiler (NextSt ThreadState{stateName} _) = do
   addString $ getStateName curThread state
   addString ";\n"
 
-statmentCompiler (ReturnSt retExpr) = do
+statmentCompiler (ReturnSt retExpr _) = do
   makeIndent
   addString "return "
-  exprCompiler retExpr
+  if voidExpr retExpr
+    then return ()
+    else exprCompiler retExpr
   addString ";\n"
             
 statmentCompiler BreakSt = addLine "break;"
@@ -207,7 +212,7 @@ exprCompiler (TimeSemExpr t) = addString $ (show t) ++ " "
 
 exprCompiler (StringSemExpr s) = addString $ "\"" ++ s ++ "\" "
 
-exprCompiler (BoolSemExpr b) = addString $ if b then "1 " else  "0 "
+exprCompiler (BoolSemExpr b) = addString $ if b then "TRUE " else  "FALSE "
                                  
 exprCompiler (SubSemExpr e) = do
   addString "( "
@@ -261,6 +266,8 @@ exprCompiler (FunSemExpr func args) = do
         addArg as
   addArg args
 
+exprCompiler VoidSemExpr = error "Compiling void expression"
+         
 varCompiler :: Var SemExpr -> Compiler ()
 varCompiler v = do
   addString $ (getVarFullName v) ++ " "
@@ -269,7 +276,7 @@ typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ case tp of
                                 StringType -> "char*"
                                 TimeType -> "long int"
-                                BoolType -> "int"
+                                BoolType -> "BOOL"
                                 _ -> "int"
 
 varDefenitionCompiler :: Var SemExpr -> Compiler ()
@@ -288,7 +295,8 @@ getVarFullName var = "__rfx__" ++ (case (varScope var) of
                                     InThread Thread{threadName} -> (tlString threadName) ++ "_"
                                     InState Thread{threadName} ThreadState{stateName} ->
                                         (tlString threadName) ++ "_" ++ (tlString stateName) ++ "_"
-                                    InFunction UserFunc{uFuncName} -> "__func_" ++ uFuncName ++ "_")
+                                    InFunction UserFunc{uFuncName} -> "__func_" ++ uFuncName ++ "_"
+                                    _ -> error "Variable in build-in function, wtf?")
                      ++ (tlString (varName var))
 
 getThreadName :: Thread SemExpr -> String
@@ -299,3 +307,4 @@ getStateName th st = "__rfx_state__" ++ (tlString $ threadName th) ++ "_" ++ (tl
 
 getFuncName :: Func SemExpr -> String
 getFuncName UserFunc{uFuncName} = "__rfx_func__" ++ (tlString $ uFuncName)
+getFuncName _ = error "Get buildin function name, wtf?"

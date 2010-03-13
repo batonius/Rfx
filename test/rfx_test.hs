@@ -120,7 +120,8 @@ varForTest = Var{varName="var"
                 ,varInitValue=(NumSynExpr 0)
                 ,varScope=InGlobal
                 ,varType=VarTypeName "int8"
-                ,varSourcePos=zeroPos}
+                ,varSourcePos=zeroPos
+                ,varArg=False}
              
 varNameForTest :: VarName
 varNameForTest = VarName "var"

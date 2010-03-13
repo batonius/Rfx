@@ -16,12 +16,12 @@ parseProgram ts = case runParser programParser [] "" ts of
 
 programParser :: TokenParser (Program SynExpr)
 programParser = do
-  vars <- many $ try $ varDefParser
+  vars <- many $ try $ (varDefParser InGlobal False)
   funcs <- many $ try $ funcDefParser
   programThreads <- many1 threadParser
   thVars <- getState
   return $ Program{programThreads
-                  ,programVars=(setVarsScope InGlobal vars)++thVars
+                  ,programVars=vars++thVars
                   ,programFuncs=funcs}
 
 addVars :: [Var SynExpr] -> TokenParser ()
@@ -29,8 +29,8 @@ addVars vars = do
   oldVars <- getState
   setState (oldVars ++ vars)
 
-varDefParser :: TokenParser (Var SynExpr)
-varDefParser = do
+varDefParser :: ProgramPos SynExpr -> Bool -> TokenParser (Var SynExpr)
+varDefParser scope arg = do
   varSourcePos <- getPosition
   (IdentifierToken varTypeName) <- identifierParser
   (IdentifierToken varName) <- identifierParser
@@ -40,8 +40,9 @@ varDefParser = do
   return Var{varName
             ,varType=VarTypeName varTypeName
             ,varInitValue
-            ,varScope=InGlobal
-            ,varSourcePos}
+            ,varScope=scope
+            ,varSourcePos
+            ,varArg=arg}
 
 funcDefParser :: TokenParser (Func SynExpr)
 funcDefParser = do
@@ -57,14 +58,15 @@ funcDefParser = do
                   ,varType=VarTypeName varTypeName
                   ,varScope=funcScope
                   ,varSourcePos=funcSourcePos
-                  ,varInitValue=VoidSynExpr } -- TODO do it right
+                  ,varInitValue=VoidSynExpr
+                  ,varArg=True}
     tokenParser RParToken
-    localVars <- many $ try varDefParser
+    localVars <- many $ try (varDefParser funcScope False)
     statments <- manyTill statmentParser $ do
       tokenParser EndToken
       tokenParser SemicolonToken
     addVars args
-    addVars $ setVarsScope funcScope localVars
+    addVars localVars
     return $ UserFunc{uFuncName = funcName
                      ,uFuncRetType = VarTypeName funcRetType
                      ,uFuncArgs = args
@@ -78,8 +80,8 @@ threadParser = do
   let thName = ThreadName threadName
   let threadScope = InThread thName
   tokenParser WhereToken
-  vars <- many $ try varDefParser
-  addVars $ setVarsScope threadScope vars
+  vars <- many $ try (varDefParser threadScope False)
+  addVars vars
   threadStates <- manyTill (stateParser thName) $ do
     tokenParser EndToken
     tokenParser SemicolonToken
@@ -91,8 +93,8 @@ stateParser threadName = do
   (IdentifierToken stateName) <- identifierParser
   let stateScope = InState threadName $ StateName stateName
   tokenParser WhereToken
-  vars <- many $ try varDefParser
-  addVars $ setVarsScope stateScope vars
+  vars <- many $ try (varDefParser stateScope False)
+  addVars vars
   stateStatments <- manyTill statmentParser $ do
     tokenParser EndToken
     tokenParser SemicolonToken
@@ -160,9 +162,10 @@ funParser = do
 
 returnParser :: TokenParser (Statment SynExpr)
 returnParser = do
+  pos <- getPosition
   tokenParser ReturnToken
-  expr <- exprParser
-  return $ ReturnSt expr
+  expr <- option VoidSynExpr exprParser
+  return $ ReturnSt expr pos
                 
 -- Expressions 
 exprParser :: TokenParser SynExpr
@@ -306,6 +309,3 @@ timeParser :: TokenParser Token
 timeParser = tokenTestParser(\x -> case x of
                                     (TimeToken _) -> True
                                     _ -> False)
-                                           
-setVarsScope :: ProgramPos SynExpr -> [Var SynExpr] -> [Var SynExpr]
-setVarsScope newScope = map (\var -> var{varScope=newScope})

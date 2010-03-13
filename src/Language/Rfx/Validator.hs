@@ -14,6 +14,8 @@ validateProgram Program{programThreads=prThs, programVars=prVrs, programFuncs=pr
                            ,programThreads=map (validateThread program) prThs
                            ,programFuncs=buildinFuncs++(map (validateFunc program) prFuncs)}
 
+
+-- TODO Dublicate search                    
 validateThread :: Program SemExpr -> Thread SynExpr -> Thread SemExpr
 validateThread pr Thread{threadName, threadStates} = thread
     where thread = Thread{threadName, threadStates =
@@ -28,15 +30,15 @@ validateVars :: Program SemExpr -> [Var SynExpr] -> [Var SemExpr]
 validateVars pr vars = validateVars' vars [] where
     validateVars' :: [Var SynExpr] -> [Var SemExpr] -> [Var SemExpr]
     validateVars' [] vVars = vVars
-    validateVars' (var@Var{varScope, varInitValue,
-                           varType, varName, varSourcePos}:uVars) vVars =
+    validateVars' (var@Var{varScope, varInitValue, varArg
+                           ,varType, varName, varSourcePos}:uVars) vVars =
       let pr' = pr{programVars=vVars}
           vInitVal = validateExpr pr' InGlobal varInitValue
           vScope = transScope pr varScope varSourcePos
           vVarType = validateType varType varSourcePos
       in if (not.null) $ usedVars vInitVal
            then throw $ VarInVarInitSemExc var
-           else if ((not.voidExpr) vInitVal) && (typeOfExpr vInitVal /= vVarType)
+           else if (not varArg) && (typeOfExpr vInitVal /= vVarType)
                   then throw $ VarInitWrongTypeSemExc var
                   else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
                        in if (not.null)  sameVars
@@ -45,13 +47,16 @@ validateVars pr vars = validateVars' vars [] where
                                                          ,varType=vVarType
                                                          ,varSourcePos
                                                          ,varScope = vScope
-                                                         ,varInitValue = vInitVal}
+                                                         ,varInitValue = vInitVal
+                                                         ,varArg}
                                                       :vVars)
 
 validateFunc :: Program SemExpr -> Func SynExpr -> Func SemExpr
-validateFunc pr UserFunc{uFuncName, uFuncArgs, uFuncStatments, uFuncRetType, uFuncPos} = func
+validateFunc pr synFunc@UserFunc{uFuncName, uFuncArgs, uFuncStatments, uFuncRetType, uFuncPos} = func
     where
-      func = UserFunc{uFuncName, uFuncArgs=vArgs, uFuncStatments=vStatments, uFuncRetType=vFuncType, uFuncPos}
+      func = if checkReturnPaths uFuncStatments
+             then UserFunc{uFuncName, uFuncArgs=vArgs, uFuncStatments=vStatments, uFuncRetType=vFuncType, uFuncPos}
+             else throw $ ReturnPathsSemExc synFunc
       vFuncType = validateType uFuncRetType uFuncPos
       vArgs = map (\Var{varName} -> varByName pr (InFunction func) (VarName varName) uFuncPos) uFuncArgs -- TODO do it right
       vStatments = map (validateStatment pr (InFunction func)) uFuncStatments
@@ -73,9 +78,11 @@ validateStatment pr scope st@(IfElseSt ex ifSts elseSts) =
        else throw $ IfNotBoolSemExc st
 
 validateStatment _ _ BreakSt = BreakSt
-
-validateStatment _ ~(InState thread _) (NextSt stateName pos) =
-    NextSt (stateByName thread stateName pos) pos
+                               
+validateStatment _ scope (NextSt stateName pos) =
+    case scope of
+      (InState thread _) -> NextSt (stateByName thread stateName pos) pos
+      _ -> throw $ NextNotInStateSemExc pos
 
 validateStatment pr scope st@(WhileSt ex sts) =
     let valEx = validateExpr pr scope ex
@@ -89,9 +96,17 @@ validateStatment pr scope st@(AssignSt varName expr pos) =
         var = varByName pr scope varName pos
     in if (varType var == valType)
        then AssignSt var valExpr pos
-       else throw $ AssignWrongType st
+       else throw $ AssignWrongTypeSemExc st
 
-validateStatment pr scope (ReturnSt expr) = ReturnSt (validateExpr pr scope expr)
+validateStatment pr scope (ReturnSt expr pos) =
+    let vExpr = validateExpr pr scope expr
+        ok = (case scope of
+                InState{} -> voidExpr vExpr
+                InFunction UserFunc{uFuncRetType} -> typeOfExpr vExpr == uFuncRetType
+                _ -> error "Cannot be retun here, wtf?")
+    in if ok
+       then ReturnSt vExpr pos
+       else throw $ ReturnWrongTypeSemExc pos
             
 validateStatment pr scope (FunSt e) = FunSt $ validateExpr pr scope e
 
@@ -110,7 +125,7 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
               func = funcByName pr exprFunc pos
           in if (funcArgsTypes func) == (map typeOfExpr vArgs)
              then FunSemExpr func vArgs
-             else throw $ FuncCallWrongType func pos
+             else throw $ FuncCallWrongTypeSemExc func pos
       validateExpr' pr scope (SubSynExpr e) = SubSemExpr $ validateExpr' pr scope e
       validateExpr' pr scope exp@(OpSynExpr op lExpr rExpr _) =
           let vlExpr = validateExpr' pr scope lExpr
@@ -272,4 +287,10 @@ dropSubExpr e = let dse = dropSubExpr' e
                                      else SubSynExpr $ dropSubExpr' se
       dropSubExpr' (FunSynExpr fun args pos) = FunSynExpr fun (map dropSubExpr' args) pos
       dropSubExpr' se = se
-                    
+
+checkReturnPaths :: (Expression e) => [Statment e] -> Bool
+checkReturnPaths [] = False
+checkReturnPaths (ReturnSt{}:_) = True
+checkReturnPaths ((IfElseSt _ ifSts elseSts):restSts) =
+    checkReturnPaths restSts || (checkReturnPaths ifSts && checkReturnPaths elseSts)
+checkReturnPaths (_:restSts) = checkReturnPaths restSts

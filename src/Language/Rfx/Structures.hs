@@ -58,6 +58,7 @@ data (Expression e) => Var e = Var
     , varScope :: ProgramPos e
     , varType :: (EVariableType e)
     , varSourcePos :: SourcePos
+    , varArg :: Bool
     } deriving (Show, Ord)
 
 data VarType = Int8Type
@@ -255,7 +256,7 @@ data (Expression e) => Statment e = AssignSt (EVariable e) e SourcePos
                                  | NextSt (EState e) SourcePos
                                  | BreakSt
                                  | FunSt e -- Expr == FunExpr
-                                 | ReturnSt e -- TODO support
+                                 | ReturnSt e SourcePos -- TODO support
                                    deriving (Show, Eq, Ord)
 
 

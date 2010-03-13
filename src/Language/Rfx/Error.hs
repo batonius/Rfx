@@ -73,11 +73,14 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | NoSuchStateSemExc String String SourcePos
                   | IfNotBoolSemExc (Statment SynExpr)
                   | WhileNotBoolSemExc (Statment SynExpr)
-                  | AssignWrongType (Statment SynExpr)
+                  | AssignWrongTypeSemExc (Statment SynExpr)
                   | OpSemExc SynExpr
                   | NoSuchVarSemExc VarName SourcePos
                   | NoSuchFuncSemExc FuncName SourcePos
-                  | FuncCallWrongType (Func SemExpr) SourcePos
+                  | FuncCallWrongTypeSemExc (Func SemExpr) SourcePos
+                  | NextNotInStateSemExc SourcePos
+                  | ReturnWrongTypeSemExc SourcePos
+                  | ReturnPathsSemExc (Func SynExpr)
                     deriving Typeable
 
 instance Exception SemException where
@@ -102,10 +105,13 @@ instance Show SemException where
     show (NoSuchStateSemExc thName stName pos) = "No such state " ++ stName ++ " in thread " ++ thName
                                                  ++ " at " ++ (show pos)
     show (NoSuchFuncSemExc (FuncName fn) pos) = "No such function " ++ fn ++ " at " ++ (show pos)
-    show (FuncCallWrongType func pos) = "Wrong types of arguments of function " ++ (funcName func) ++ " at " ++ (show pos)
-    show (AssignWrongType (AssignSt varName _ pos)) = case varName of
+    show (FuncCallWrongTypeSemExc func pos) = "Wrong types of arguments of function " ++ (funcName func) ++ " at " ++ (show pos)
+    show (AssignWrongTypeSemExc (AssignSt varName _ pos)) = case varName of
                                                             VarName _ -> "Wrong type of rvalue at " ++ (show pos)
                                                             LongVarName _ _ -> "Wrong type of rvalue at " ++ (show pos)
+    show (NextNotInStateSemExc pos) = "Next statment not inside state at " ++ (show pos)
+    show (ReturnWrongTypeSemExc pos) = "Wrong type of argument of return statment at " ++ (show pos)
+    show (ReturnPathsSemExc func) = "Not all paths in fuction " ++ (funcName func) ++ " return value"
     show _ = "Lolwut?"
                     
 instance Lined SemException where
@@ -115,13 +121,16 @@ instance Lined SemException where
     getErrorLine (NoSuchTypeSemExc _ pos) = sourceLine pos + 1
     getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos
     getErrorLine (NoSuchFuncSemExc _ pos) = sourceLine pos + 1
-    getErrorLine (FuncCallWrongType _ pos) = sourceLine pos + 1
+    getErrorLine (FuncCallWrongTypeSemExc _ pos) = sourceLine pos + 1
     getErrorLine (NoSuchVarSemExc varName pos) = case varName of
                                                VarName _ -> sourceLine pos
                                                LongVarName _ _ -> sourceLine pos
     getErrorLine (NoSuchThreadSemExc _ pos) = sourceLine pos
     getErrorLine (NoSuchStateSemExc _ _ pos) = sourceLine pos
-    getErrorLine (AssignWrongType (AssignSt varName _ pos)) = case varName of
+    getErrorLine (AssignWrongTypeSemExc (AssignSt varName _ pos)) = case varName of
                                                             VarName _ -> sourceLine pos
                                                             LongVarName _ _ -> sourceLine pos
+    getErrorLine (NextNotInStateSemExc pos) = sourceLine pos
+    getErrorLine (ReturnWrongTypeSemExc pos) = sourceLine pos
+    getErrorLine (ReturnPathsSemExc UserFunc{uFuncPos}) = sourceLine uFuncPos 
     getErrorLine _ = 0
