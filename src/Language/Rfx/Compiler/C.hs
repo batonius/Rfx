@@ -8,6 +8,7 @@ import Language.Rfx.Util
 programCompiler :: Program SemExpr -> Compiler ()
 programCompiler program = do
   let threads = programThreads program
+  let funcs = filter (not.buildinFunc) $ programFuncs program
   let threadsLen = length threads
   addLine "/*Rfx was here*/"
   addLine "#define XOR(x,y) ((x) ? !(y) : (y))"
@@ -38,6 +39,8 @@ programCompiler program = do
   -- Global vars
   globalVars <- getVarsFromScope InGlobal
   sequence_ [varDefenitionCompiler var | var <- globalVars]
+  -- User functions
+  sequence_ [funcDefenitionCompiler func | func <- funcs]
   -- Thread vars
   sequence_ [do
               threadVars <- getVarsFromScope $ InThread thread
@@ -98,6 +101,30 @@ programCompiler program = do
   subIndent
   addLine "}"
 
+funcDefenitionCompiler :: Func SemExpr -> Compiler ()
+funcDefenitionCompiler func@UserFunc{uFuncArgs, uFuncStatments, uFuncRetType} = do
+  typeCompiler uFuncRetType
+  addString " "
+  addString $ getFuncName func
+  addString "("
+  sequence_ [do
+              typeCompiler varType
+              addString (" " ++ (getVarFullName var) ++ ",")
+             | var@Var{varType} <- uFuncArgs]
+  dropLastChar
+  addString ")\n"
+  addLine "{"
+  addIndent
+  funcVars <-  getVarsFromScope $ InFunction func
+  let funcVars' = filter ((/=VoidSemExpr).varInitValue) funcVars
+  sequence_ [varDefenitionCompiler var | var <- funcVars']
+  sequence_ [do
+              statmentCompiler st
+             | st <- uFuncStatments]
+  subIndent
+  addLine "}"
+funcDefenitionCompiler _ = error "No defenitino for buildin functions"
+          
 stateCompiler :: Thread SemExpr -> ThreadState SemExpr -> Compiler ()
 stateCompiler thread state = do
   addLine "\nvoid"
@@ -122,7 +149,7 @@ statmentsCompiler sts = do
   addLine "}"
 
 statmentCompiler :: Statment SemExpr -> Compiler ()
-statmentCompiler (AssignSt var expr) = do
+statmentCompiler (AssignSt var expr _) = do
   makeIndent
   varCompiler var
   addString "= "
@@ -158,6 +185,12 @@ statmentCompiler (NextSt ThreadState{stateName} _) = do
   addString $ getStateName curThread state
   addString ";\n"
 
+statmentCompiler (ReturnSt retExpr) = do
+  makeIndent
+  addString "return "
+  exprCompiler retExpr
+  addString ";\n"
+            
 statmentCompiler BreakSt = addLine "break;"
 
 statmentCompiler (FunSt fun) = do
@@ -253,10 +286,9 @@ getVarFullName :: Var SemExpr -> String
 getVarFullName var = "__rfx__" ++ (case (varScope var) of
                                     InGlobal -> ""
                                     InThread Thread{threadName} -> (tlString threadName) ++ "_"
-                                    InState Thread{threadName}
-                                            ThreadState{stateName} ->
-                                                (tlString threadName) ++ "_"
-                                                 ++ (tlString stateName) ++ "_")
+                                    InState Thread{threadName} ThreadState{stateName} ->
+                                        (tlString threadName) ++ "_" ++ (tlString stateName) ++ "_"
+                                    InFunction UserFunc{uFuncName} -> "__func_" ++ uFuncName ++ "_")
                      ++ (tlString (varName var))
 
 getThreadName :: Thread SemExpr -> String
@@ -264,3 +296,6 @@ getThreadName th = "__rfx_thread__" ++ (tlString $ threadName th)
 
 getStateName :: Thread SemExpr -> ThreadState SemExpr -> String
 getStateName th st = "__rfx_state__" ++ (tlString $ threadName th) ++ "_" ++ (tlString $ stateName st)
+
+getFuncName :: Func SemExpr -> String
+getFuncName UserFunc{uFuncName} = "__rfx_func__" ++ (tlString $ uFuncName)

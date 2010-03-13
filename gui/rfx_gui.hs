@@ -31,9 +31,9 @@ compileString index string = do
 doCompile :: Int -> String -> IO (Either (Int,String) String)
 doCompile compIndex string = ((compileString compIndex string)
                               `Control.Exception.catch`
-                              (\ (ex::RfxException) -> return $ Left ((getErrorLine ex), "Lol i catch: " ++ (show ex))))
+                              (\ (ex::RfxException) -> return $ Left ((getErrorLine ex), "Catch: " ++ (show ex))))
                              `Control.Exception.catch`
-                             (\ (ex::SomeException) -> return $ Left (0, "Something wrong, lol" ++ (show ex)))
+                             (\ (ex::SomeException) -> return $ Left (0, "Something wrong: " ++ (show ex)))
 
 compileBuffers combo rfxSourceView resSourceView = do
     rfxBuffer <- textViewGetBuffer rfxSourceView
@@ -95,6 +95,7 @@ main = do
   rfxSourceView <- case rfxLanguage of
     (Just rfxLang) -> do
       buffer <- sourceBufferNewWithLanguage rfxLang
+      set buffer [ textBufferText := "thread a where\n\tstate b where\n\tend;\nend;"] 
       sourceViewNewWithBuffer buffer
     Nothing -> sourceViewNew
   set rfxSourceView [ textViewWrapMode := WrapWord ]

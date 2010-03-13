@@ -29,6 +29,9 @@ type Compiler a = State CompilerState a
 addString :: String -> Compiler ()
 addString s = State (\state -> ((), state{compilerCode=(compilerCode state)++s}))
 
+dropLastChar ::Compiler ()
+dropLastChar = State (\state -> ((), state{compilerCode = init (compilerCode state)}))
+              
 makeIndent :: Compiler ()
 makeIndent = State (\state -> ((), state{compilerCode=(compilerCode state)
                                           ++ (replicate (compilerIndent state) ' ')}))

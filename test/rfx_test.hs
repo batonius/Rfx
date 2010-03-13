@@ -8,6 +8,8 @@ import qualified Data.List as List
 import System.Directory
 import System.Cmd
 import System.Exit
+import Text.ParserCombinators.Parsec
+import Text.Parsec.Pos(newPos)
     
 import Language.Rfx.Compiler() -- I can't test it here
 import Language.Rfx.Tokens
@@ -16,6 +18,8 @@ import Language.Rfx.Parser
 import Language.Rfx.Structures
 import Language.Rfx.Util
 
+zeroPos = newPos "" 0 0 
+    
 main :: IO ()
 main = do
   goodFiles <- getDirectoryContents "./test/succ"
@@ -115,7 +119,8 @@ varForTest :: Var SynExpr
 varForTest = Var{varName="var"
                 ,varInitValue=(NumSynExpr 0)
                 ,varScope=InGlobal
-                ,varType=VarTypeName "int8"}
+                ,varType=VarTypeName "int8"
+                ,varSourcePos=zeroPos}
              
 varNameForTest :: VarName
 varNameForTest = VarName "var"
@@ -124,12 +129,12 @@ parserAssertStatment :: String -> [Statment SynExpr] -> Assertion
 parserAssertStatment s stm = ("int8 var = 0;thread th where\nstate st where\n" ++ s ++"\nend;\nend;")
                              `parserAssert`
                              Program [Thread "th" [ThreadState "st" stm]]
-                                         [varForTest]
+                                         [varForTest] []
 
 parserAssertExpr :: String -> SynExpr -> Assertion
 parserAssertExpr s e = ("var = " ++ s ++ ";")
                        `parserAssertStatment`
-                       [AssignSt varNameForTest e]
+                       [AssignSt varNameForTest e zeroPos]
                                          
 parserEmptyTest :: Assertion
 parserEmptyTest = "" `parserAssertStatment` []
@@ -148,20 +153,21 @@ parserMultipleThreadsTest = do
   \end;"
   `parserAssert`
   Program [ Thread "яЪ" [ThreadState "яЪ" []]
-          , Thread "b" [ThreadState "bb" [], ThreadState "bbb" []]] []
+          , Thread "b" [ThreadState "bb" [], ThreadState "bbb" []]]
+  [] []
   
 parserAssignStatmentTest :: Assertion
 parserAssignStatmentTest = do
-  "var = 12;" `parserAssertStatment` [AssignSt varNameForTest (NumSynExpr 12)]
+  "var = 12;" `parserAssertStatment` [AssignSt varNameForTest (NumSynExpr 12) zeroPos]
 
 parserExprTest :: Assertion
 parserExprTest = do
   "10" `parserAssertExpr` (NumSynExpr 10)
-  "10+3"  `parserAssertExpr` (OpSynExpr PlusSynOp (NumSynExpr 10) (NumSynExpr 3))
-  "var" `parserAssertExpr` (VarSynExpr varNameForTest)
+  "10+3"  `parserAssertExpr` (OpSynExpr PlusSynOp (NumSynExpr 10) (NumSynExpr 3) zeroPos)
+  "var" `parserAssertExpr` (VarSynExpr varNameForTest zeroPos)
   "(1*1)-var" `parserAssertExpr` (OpSynExpr MinusSynOp
-                                  (SubSynExpr $ OpSynExpr MulSynOp (NumSynExpr 1) (NumSynExpr 1))
-                                  (VarSynExpr varNameForTest))
+                                  (SubSynExpr $ OpSynExpr MulSynOp (NumSynExpr 1) (NumSynExpr 1) zeroPos)
+                                  (VarSynExpr varNameForTest zeroPos) zeroPos)
 
 -- --
 compileFileSuccessAssertion :: FilePath -> Assertion

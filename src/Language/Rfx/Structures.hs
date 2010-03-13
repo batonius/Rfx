@@ -15,6 +15,8 @@ module Language.Rfx.Structures(Program(..),
                                VarTypeName(..),
                                Func(..),
                                FuncName(..),
+                               ThreadName(..),
+                               StateName(..),
                                funcName,
                                buildinFunc,
                                funcRetType,
@@ -28,63 +30,20 @@ import Language.Rfx.Util()
 import Text.ParserCombinators.Parsec(SourcePos)
 import qualified Data.Map as Map
 
-data (Expression e) => Var e = Var
-    {
-      varName :: String
-    , varInitValue :: e
-    , varScope :: ProgramPos e
-    , varType :: (VariableType e)
-    , varSourcePos :: SourcePos
-    } deriving (Show, Ord)
-                            
-instance (Expression e) => Eq (Var e) where
-    (==) a b = (varName a) == (varName b)
-
-data VarName = VarName String SourcePos
-             | LongVarName String String SourcePos
-               deriving (Eq, Ord, Show)
-               
-data SynExpr = NumSynExpr Int
-             | OpSynExpr SynOper SynExpr SynExpr SourcePos
-             | VarSynExpr VarName 
-             | SubSynExpr SynExpr
-             | FunSynExpr FuncName [SynExpr]
-             | StringSynExpr String
-             | BoolSynExpr Bool
-             | TimeSynExpr Integer -- ms 
-               deriving (Show, Eq, Ord)
-
-data SemExpr = NumSemExpr Int
-             | OpSemExpr SemOper SemExpr SemExpr
-             | VarSemExpr (Var SemExpr)
-             | SubSemExpr SemExpr
-             | FunSemExpr (Func SemExpr) [SemExpr]
-             | StringSemExpr String
-             | BoolSemExpr Bool
-             | TimeSemExpr Integer -- ms
-             deriving (Show, Eq, Ord)
-          
-data (Expression e) => ProgramPos e = InGlobal
-                                   | InThread (Thread e)
-                                   | InState (Thread e) (ThreadState e)
-                                   | InFunction (Function e)
-                                     deriving (Show, Eq, Ord)
-                               
+-- Program
 data (Expression e) => Program e = Program
     {
       programThreads :: [Thread e]
     , programVars :: [Var e]
     , programFuncs :: [Func e]
     } deriving (Show, Eq)
-
+                                
+-- Real objects
 data (Expression e) => Thread e = Thread
     {
       threadName :: String
     , threadStates :: [ThreadState e]
     } deriving (Show, Ord)
-
-instance Expression e => Eq (Thread e) where
-    (==) a b = (threadName a) == (threadName b)
                                
 data (Expression e) => ThreadState e = ThreadState
     {
@@ -92,9 +51,164 @@ data (Expression e) => ThreadState e = ThreadState
     , stateStatments :: [Statment e]
     } deriving (Show, Ord)
 
+data (Expression e) => Var e = Var
+    {
+      varName :: String
+    , varInitValue :: e
+    , varScope :: ProgramPos e
+    , varType :: (EVariableType e)
+    , varSourcePos :: SourcePos
+    } deriving (Show, Ord)
+
+data VarType = Int8Type
+             | BoolType
+             | StringType
+             | TimeType
+             | AnyType
+               deriving (Show, Eq, Ord)
+
+data (Expression e) => Func e = BuildinFunc
+    {
+      biFuncName     ::String
+    , biFuncArgs     ::[VarType]
+    , biFuncRetType  ::(EVariableType e)
+    }
+                             | UserFunc
+    {
+      uFuncName      ::String
+    , uFuncArgs      ::[Var e]
+    , uFuncStatments ::[Statment e]
+    , uFuncRetType   ::(EVariableType e)
+    , uFuncPos       ::SourcePos
+    }
+                               deriving (Show, Ord)
+-- Names
+data ThreadName = ThreadName String deriving (Show, Eq, Ord)
+data StateName = StateName String deriving (Show, Eq, Ord)
+data VarName = VarName String
+             | LongVarName String String
+               deriving (Eq, Ord, Show)
+data VarTypeName = VarTypeName String deriving (Eq, Show, Ord)
+data FuncName = FuncName String  deriving (Show, Eq, Ord)
+                                        
+-- Expr class
+class (Eq e
+      ,Eq (EVariable e)
+      ,Ord (EVariable e)
+      ,Show (EVariable e)
+      ,Eq (EVariableType e)
+      ,Ord (EVariableType e)
+      ,Show (EVariableType e)
+      ,Eq (EFunction e)
+      ,Ord (EFunction e)
+      ,Show (EFunction e)
+      ,Eq (EThread e)
+      ,Ord (EThread e)
+      ,Show (EThread e)
+      ,Eq (EState e)
+      ,Ord (EState e)
+      ,Show (EState e)
+      ) => Expression e where
+    type EVariable e :: *
+    type EVariableType e :: *
+    type EFunction e :: *
+    type EThread e :: *
+    type EState e :: *
+    constExpr :: e -> Bool
+    opExpr :: e -> Bool
+    subExpr :: e -> Bool
+    varExpr :: e -> Bool
+    voidExpr :: e -> Bool
+
+-- Expr instances                
+data SynExpr = NumSynExpr Int
+             | OpSynExpr SynOper SynExpr SynExpr SourcePos
+             | VarSynExpr (EVariable SynExpr) SourcePos
+             | SubSynExpr SynExpr
+             | FunSynExpr (EFunction SynExpr) [SynExpr] SourcePos
+             | StringSynExpr String
+             | BoolSynExpr Bool
+             | TimeSynExpr Integer -- ms
+             | VoidSynExpr
+               deriving (Show, Eq, Ord)
+
+instance Expression SynExpr where
+    type EVariable SynExpr = VarName
+    type EVariableType SynExpr = VarTypeName
+    type EFunction SynExpr = FuncName
+    type EThread SynExpr = ThreadName
+    type EState SynExpr = StateName
+    constExpr NumSynExpr{} = True
+    constExpr StringSynExpr{} = True
+    constExpr BoolSynExpr{} = True
+    constExpr TimeSynExpr{} = True
+    constExpr VoidSynExpr = True
+    constExpr _ = False
+    opExpr OpSynExpr{} = True
+    opExpr _ = False
+    subExpr SubSynExpr{} = True
+    subExpr _ = False
+    varExpr VarSynExpr{} = True
+    varExpr _ = False
+    voidExpr VoidSynExpr = True
+    voidExpr _ = False
+
+data SemExpr = NumSemExpr Int
+             | OpSemExpr SemOper SemExpr SemExpr
+             | VarSemExpr (EVariable SemExpr)
+             | SubSemExpr SemExpr
+             | FunSemExpr (EFunction SemExpr) [SemExpr]
+             | StringSemExpr String
+             | BoolSemExpr Bool
+             | TimeSemExpr Integer -- ms
+             | VoidSemExpr
+             deriving (Show, Eq, Ord)
+                              
+instance Expression SemExpr where
+    type EVariable SemExpr = Var SemExpr
+    type EVariableType SemExpr = VarType
+    type EFunction SemExpr = Func SemExpr
+    type EThread SemExpr = Thread SemExpr
+    type EState SemExpr = ThreadState SemExpr
+    constExpr NumSemExpr{} = True
+    constExpr StringSemExpr{} = True
+    constExpr BoolSemExpr{} = True
+    constExpr TimeSemExpr{} = True
+    constExpr VoidSemExpr = True
+    constExpr _ = False
+    opExpr OpSemExpr{} = True
+    opExpr _ = False
+    subExpr SubSemExpr{} = True
+    subExpr _ = False
+    varExpr VarSemExpr{} = True
+    varExpr _ = False
+    voidExpr VoidSemExpr = True
+    voidExpr _ = False
+
+                      
+-- Eq instances                      
+instance (Expression e) => Eq (Var e) where
+    (==) a b = (varName a) == (varName b)
+
+instance Expression e => Eq (Thread e) where
+    (==) a b = (threadName a) == (threadName b)
+                               
 instance Expression e => Eq (ThreadState e) where
     (==) a b = (stateName a) == (stateName b)
-                                    
+               
+instance (Expression e) => Eq (Func e) where
+    (==) BuildinFunc{biFuncName=biFuncNamel} BuildinFunc{biFuncName=biFuncNamer} = biFuncNamel == biFuncNamer
+    (==) UserFunc{uFuncName=uFuncNamel} UserFunc{uFuncName=uFuncNamer} = uFuncNamel == uFuncNamer
+    (==) _ _ = False
+
+-- ProgramPos               
+data (Expression e) => ProgramPos e = InGlobal
+                                   | InThread (EThread e)
+                                   | InState (EThread e) (EState e)
+                                   | InFunction (EFunction e)
+                                     deriving (Show, Eq, Ord)
+
+-- Operators                                              
 data SynOper = PlusSynOp
              | MinusSynOp
              | MulSynOp
@@ -132,39 +246,19 @@ data SemOper = NumPlusSemOp
              | TimeGrEqlSemOp
              | TimeLsEqlSemOp
                deriving (Show, Eq, Ord)
-                     
-data VarType = Int8Type
-             | BoolType
-             | StringType
-             | TimeType
-             | AnyType
-               deriving (Show, Eq, Ord)
 
-data VarTypeName = VarTypeName String deriving (Eq, Show, Ord)
+-- Statments
+data (Expression e) => Statment e = AssignSt (EVariable e) e SourcePos
+                                 | IfSt e [Statment e]
+                                 | IfElseSt e [Statment e] [Statment e]
+                                 | WhileSt e [Statment e]
+                                 | NextSt (EState e) SourcePos
+                                 | BreakSt
+                                 | FunSt e -- Expr == FunExpr
+                                 | ReturnSt e -- TODO support
+                                   deriving (Show, Eq, Ord)
 
-data (Expression e) => Func e = BuildinFunc
-    {
-      biFuncName     ::String
-    , biFuncArgs     ::[VarType]
-    , biFuncRetType  ::(VariableType e)
-    }
-                             | UserFunc
-    {
-      uFuncName      ::String
-    , uFuncArgs      ::[Var e]
-    , uFuncStatments ::[Statment e]
-    , uFuncRetType   ::(VariableType e)
-    , uFuncPos       ::SourcePos
-    }
-                               deriving (Show, Ord)
 
-instance (Expression e) => Eq (Func e) where
-    (==) BuildinFunc{biFuncName=biFuncNamel} BuildinFunc{biFuncName=biFuncNamer} = biFuncNamel == biFuncNamer
-    (==) UserFunc{uFuncName=uFuncNamel} UserFunc{uFuncName=uFuncNamer} = uFuncNamel == uFuncNamer
-    (==) _ _ = False
-                                        
-data FuncName = FuncName String SourcePos deriving (Show, Eq, Ord)
-                                        
 funcName BuildinFunc{biFuncName} = biFuncName
 funcName UserFunc{uFuncName} = uFuncName
 
@@ -176,67 +270,6 @@ funcRetType UserFunc{uFuncRetType} = uFuncRetType
 
 funcArgsTypes BuildinFunc{biFuncArgs} = biFuncArgs
 funcArgsTypes UserFunc{uFuncArgs} = map varType uFuncArgs
-
-data (Expression e) =>  Statment e = AssignSt (Variable e) e
-    | IfSt e [Statment e]
-    | IfElseSt e [Statment e] [Statment e]
-    | WhileSt e [Statment e]
-    | NextSt (ThreadState e) SourcePos
-    | BreakSt
-    | FunSt e -- Expr == FunExpr
-    | ReturnSt e -- TODO support
-      deriving (Show, Eq, Ord)
-               
-class (Eq e
-      ,Eq (Variable e)
-      ,Ord (Variable e)
-      ,Show (Variable e)
-      ,Eq (VariableType e)
-      ,Ord (VariableType e)
-      ,Show (VariableType e)
-      ,Eq (Function e)
-      ,Ord (Function e)
-      ,Show (Function e)
-      ) => Expression e where
-    type Variable e :: *
-    type VariableType e :: *
-    type Function e :: *
-    constExpr :: e -> Bool
-    opExpr :: e -> Bool
-    subExpr :: e -> Bool
-    varExpr :: e -> Bool
-
-instance Expression SynExpr where
-    type Variable SynExpr = VarName
-    type VariableType SynExpr = VarTypeName
-    type Function SynExpr = FuncName
-    constExpr NumSynExpr{} = True
-    constExpr StringSynExpr{} = True
-    constExpr BoolSynExpr{} = True
-    constExpr TimeSynExpr{} = True
-    constExpr _ = False
-    opExpr OpSynExpr{} = True
-    opExpr _ = False
-    subExpr SubSynExpr{} = True
-    subExpr _ = False
-    varExpr VarSynExpr{} = True
-    varExpr _ = False
-                              
-instance Expression SemExpr where
-    type Variable SemExpr = Var SemExpr
-    type VariableType SemExpr = VarType
-    type Function SemExpr = Func SemExpr
-    constExpr NumSemExpr{} = True
-    constExpr StringSemExpr{} = True
-    constExpr BoolSemExpr{} = True
-    constExpr TimeSemExpr{} = True
-    constExpr _ = False
-    opExpr OpSemExpr{} = True
-    opExpr _ = False
-    subExpr SubSemExpr{} = True
-    subExpr _ = False
-    varExpr VarSemExpr{} = True
-    varExpr _ = False
 
 posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
 posChildOf _ InGlobal = True
