@@ -9,17 +9,21 @@ import Control.Exception hiding (try)
 
 -- Validate functions
 validateProgram :: Program SynExpr -> Program SemExpr
-validateProgram Program{programThreads=prThs, programVars=prVrs, programFuncs=prFuncs} = program
+validateProgram Program{programThreads=prThs, programVars=prVrs, programFuncs=prFuncs} = program'
     where program = Program{programVars=validateVars program prVrs
                            ,programThreads=map (validateThread program) prThs
                            ,programFuncs=buildinFuncs++(map (validateFunc program) prFuncs)}
+          program' = case duplicatesInList (programThreads program) of
+                       Nothing -> program
+                       Just Thread{threadName} -> throw $ ThreadAlreadyExistsSemExc threadName
 
-
--- TODO Dublicate search                    
 validateThread :: Program SemExpr -> Thread SynExpr -> Thread SemExpr
-validateThread pr Thread{threadName, threadStates} = thread
+validateThread pr Thread{threadName, threadStates=threadStates'} = thread'
     where thread = Thread{threadName, threadStates =
-                              map (validateState pr thread) threadStates}
+                              map (validateState pr thread) threadStates'}
+          thread'= case duplicatesInList (threadStates thread) of
+                     Nothing -> thread
+                     Just ThreadState{stateName} -> throw $ StateAlreadyExistsSemExc threadName stateName
 
 validateState :: Program SemExpr -> Thread SemExpr -> ThreadState SynExpr -> ThreadState SemExpr
 validateState pr thread ThreadState{stateName, stateStatments} = state
@@ -38,27 +42,28 @@ validateVars pr vars = validateVars' vars [] where
           vVarType = validateType varType varSourcePos
       in if (not.null) $ usedVars vInitVal
            then throw $ VarInVarInitSemExc var
-           else if (not varArg) && (typeOfExpr vInitVal /= vVarType)
-                  then throw $ VarInitWrongTypeSemExc var
-                  else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
-                       in if (not.null)  sameVars
-                            then throw $ VarAlreadyExistsSemExc var (Language.Rfx.Structures.varSourcePos (head sameVars))
-                            else validateVars' uVars (Var{varName
-                                                         ,varType=vVarType
-                                                         ,varSourcePos
-                                                         ,varScope = vScope
-                                                         ,varInitValue = vInitVal
-                                                         ,varArg}
-                                                      :vVars)
+           else if (not varArg) && ((typeOfExpr vInitVal /= vVarType) || (vVarType == VoidType))  -- TODO Make exception
+                then throw $ VarInitWrongTypeSemExc var
+                else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
+                     in if (not.null)  sameVars
+                        then throw $ VarAlreadyExistsSemExc var (Language.Rfx.Structures.varSourcePos (head sameVars))
+                        else validateVars' uVars (Var{varName
+                                                     ,varType=vVarType
+                                                     ,varSourcePos
+                                                     ,varScope = vScope
+                                                     ,varInitValue = vInitVal
+                                                     ,varArg}
+                                                  :vVars)
 
 validateFunc :: Program SemExpr -> Func SynExpr -> Func SemExpr
 validateFunc pr synFunc@UserFunc{uFuncName, uFuncArgs, uFuncStatments, uFuncRetType, uFuncPos} = func
     where
-      func = if checkReturnPaths uFuncStatments
+      func = if (vFuncType==VoidType) || (checkReturnPaths uFuncStatments)
              then UserFunc{uFuncName, uFuncArgs=vArgs, uFuncStatments=vStatments, uFuncRetType=vFuncType, uFuncPos}
              else throw $ ReturnPathsSemExc synFunc
       vFuncType = validateType uFuncRetType uFuncPos
-      vArgs = map (\Var{varName} -> varByName pr (InFunction func) (VarName varName) uFuncPos) uFuncArgs -- TODO do it right
+--      vArgs = map (\Var{varName} -> varByName pr (InFunction func) (VarName varName) uFuncPos) uFuncArgs -- TODO do it right
+      vArgs = reverse $ filter (\Var{varScope, varArg} -> varArg && (varScope==InFunction func)) $ programVars pr
       vStatments = map (validateStatment pr (InFunction func)) uFuncStatments
 
 validateFunc _ _ = error "Buildin function validation"       
@@ -150,10 +155,12 @@ validateType (VarTypeName typeName) pos = case Map.lookup typeName
                                                ,("bool", BoolType)
                                                ,("string", StringType)
                                                ,("time", TimeType)
+                                               ,("void", VoidType)
                                                ,("ЦЕЛ8", Int8Type)
                                                ,("ЛОГ", BoolType)
                                                ,("СТРОКА", StringType)
-                                               ,("ВРЕМЯ", TimeType)]
+                                               ,("ВРЕМЯ", TimeType)
+                                               ,("ПУСТО", VoidType)]
                                           of Nothing -> throw $ NoSuchTypeSemExc typeName pos
                                              Just vVarType -> vVarType
 -- ByName functions
@@ -228,7 +235,7 @@ typeOfExpr (OpSemExpr semOp _ _ ) = opType
                                  in if null ops
                                     then error $ "No such oper" ++ (show semOp) -- User error? No
                                     else head ops
-typeOfExpr VoidSemExpr = error "Void sem expr"
+typeOfExpr VoidSemExpr = VoidType
                                                                
 priorityList :: [[SynOper]]
 priorityList = [[AndSynOp
@@ -294,3 +301,10 @@ checkReturnPaths (ReturnSt{}:_) = True
 checkReturnPaths ((IfElseSt _ ifSts elseSts):restSts) =
     checkReturnPaths restSts || (checkReturnPaths ifSts && checkReturnPaths elseSts)
 checkReturnPaths (_:restSts) = checkReturnPaths restSts
+
+duplicatesInList :: Eq a => [a] -> Maybe a
+duplicatesInList l = duplicatesInList' l []
+    where duplicatesInList' [] _ = Nothing
+          duplicatesInList' (x:xs) rest = if x `elem` rest
+                                          then Just x
+                                          else duplicatesInList' xs (x:rest)

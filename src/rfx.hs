@@ -2,7 +2,7 @@
 -- | Rfx main file
 import System.Environment(getArgs)
 import System.Exit
-import Prelude(($), IO, map, show, (++))
+import Prelude hiding(readFile, catch, putStrLn)
 import System.IO.UTF8
 -- TODO remove unnessesary
 import Language.Rfx.Compiler
@@ -16,6 +16,7 @@ compileFile inFile = do
   putStrLn $
            compileProgram defaultCompilerOptions $ validateProgram $ 
            parseProgram $ lexString inFile
+  return ()
             
 main :: IO ()
 main = do

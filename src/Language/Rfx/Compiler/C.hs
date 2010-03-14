@@ -106,15 +106,23 @@ programCompiler program = do
 
 funcDefenitionCompiler :: Func SemExpr -> Compiler ()
 funcDefenitionCompiler func@UserFunc{uFuncArgs, uFuncStatments, uFuncRetType} = do
+  let makeArgList :: [Var SemExpr] -> String
+      makeArgList = makeArgList' []
+          where makeArgList' acc [] = acc
+                makeArgList' acc (var@Var{varType}:vars) =
+                    makeArgList'
+                    ((if null acc then "" else ", ") ++ (typeName varType) ++ " " ++ (getVarFullName var))
+                    vars
   typeCompiler uFuncRetType
   addString " "
   addString $ getFuncName func
   addString "("
-  sequence_ [do
-              typeCompiler varType
-              addString (" " ++ (getVarFullName var) ++ ",")
-             | var@Var{varType} <- uFuncArgs]
-  dropLastChar
+  addString $ makeArgList uFuncArgs
+  -- sequence_ [do
+  --             typeCompiler varType
+  --             addString (" " ++ (getVarFullName var) ++ ",")
+  --            | var@Var{varType} <- uFuncArgs]
+  -- dropLastChar
   addString ")\n"
   addLine "{"
   addIndent
@@ -273,12 +281,15 @@ varCompiler v = do
   addString $ (getVarFullName v) ++ " "
 
 typeCompiler :: VarType -> Compiler ()
-typeCompiler tp = addString $ case tp of
-                                StringType -> "char*"
-                                TimeType -> "long int"
-                                BoolType -> "BOOL"
-                                _ -> "int"
+typeCompiler tp = addString $ typeName tp
 
+typeName tp = case tp of
+                StringType -> "char*"
+                TimeType -> "long int"
+                BoolType -> "BOOL"
+                VoidType -> "void"
+                _ -> "int"
+                                    
 varDefenitionCompiler :: Var SemExpr -> Compiler ()
 varDefenitionCompiler var = do
   makeIndent

@@ -2,6 +2,7 @@
 import Graphics.UI.Gtk hiding (fill)
 import Graphics.UI.Gtk.SourceView
 import Control.Monad
+import System.IO
 import Language.Rfx.Compiler
 import Language.Rfx.Validator
 import Language.Rfx.Lexer
@@ -25,7 +26,10 @@ fullCompiler = compileProgram defaultCompilerOptions . validateProgram . parsePr
 compileString :: Int -> String -> IO (Either (Int,String) String)
 compileString index string = do
   let compiler = [fullCompiler, onlyValidator, onlyParser, onlyLexer] !! index
-  ret <- evaluate $ compiler string
+      ret = compiler string
+--  ret <- evaluate $ compiler string
+--  ret <- return $! compiler string
+  hPutStr stderr $ ret -- OMG
   return $ Right ret
 
 doCompile :: Int -> String -> IO (Either (Int,String) String)
@@ -144,4 +148,4 @@ main = do
       else return ()
   outputComboBox `on` changed $  compileBuffers outputComboBox rfxSourceView resSourceView
   widgetShowAll window
-  mainGUI    
+  mainGUI

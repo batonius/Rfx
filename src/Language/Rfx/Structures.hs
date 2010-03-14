@@ -65,7 +65,7 @@ data VarType = Int8Type
              | BoolType
              | StringType
              | TimeType
-             | AnyType
+             | VoidType
                deriving (Show, Eq, Ord)
 
 data (Expression e) => Func e = BuildinFunc
@@ -256,7 +256,7 @@ data (Expression e) => Statment e = AssignSt (EVariable e) e SourcePos
                                  | NextSt (EState e) SourcePos
                                  | BreakSt
                                  | FunSt e -- Expr == FunExpr
-                                 | ReturnSt e SourcePos -- TODO support
+                                 | ReturnSt e SourcePos
                                    deriving (Show, Eq, Ord)
 
 

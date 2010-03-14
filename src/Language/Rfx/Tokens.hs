@@ -53,8 +53,7 @@ data Token = NumberToken Int        -- Number
            | OrToken
            | XorToken
            | NotToken
-           | BoolToken
-           | Int8Token
+           | VoidToken
            | EOFToken
            | CommentToken
              deriving (Show, Eq)

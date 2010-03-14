@@ -81,6 +81,8 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | NextNotInStateSemExc SourcePos
                   | ReturnWrongTypeSemExc SourcePos
                   | ReturnPathsSemExc (Func SynExpr)
+                  | ThreadAlreadyExistsSemExc String
+                  | StateAlreadyExistsSemExc String String
                     deriving Typeable
 
 instance Exception SemException where
@@ -112,13 +114,15 @@ instance Show SemException where
     show (NextNotInStateSemExc pos) = "Next statment not inside state at " ++ (show pos)
     show (ReturnWrongTypeSemExc pos) = "Wrong type of argument of return statment at " ++ (show pos)
     show (ReturnPathsSemExc func) = "Not all paths in fuction " ++ (funcName func) ++ " return value"
+    show (ThreadAlreadyExistsSemExc thName) = "Thread " ++ thName ++ " already exists"
+    show (StateAlreadyExistsSemExc thName stName) = "State " ++ stName ++ " in thread " ++ thName ++ " already exists"
     show _ = "Lolwut?"
                     
 instance Lined SemException where
     getErrorLine (VarInVarInitSemExc (Var{varSourcePos})) = sourceLine varSourcePos + 1
     getErrorLine (VarInitWrongTypeSemExc (Var{varSourcePos})) = sourceLine varSourcePos + 1
     getErrorLine (VarAlreadyExistsSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
-    getErrorLine (NoSuchTypeSemExc _ pos) = sourceLine pos + 1
+    getErrorLine (NoSuchTypeSemExc _ pos) = sourceLine pos 
     getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos
     getErrorLine (NoSuchFuncSemExc _ pos) = sourceLine pos + 1
     getErrorLine (FuncCallWrongTypeSemExc _ pos) = sourceLine pos + 1
