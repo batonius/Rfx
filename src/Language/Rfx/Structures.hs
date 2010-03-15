@@ -250,13 +250,14 @@ data SemOper = NumPlusSemOp
 
 -- Statments
 data (Expression e) => Statment e = AssignSt (EVariable e) e SourcePos
-                                 | IfSt e [Statment e]
-                                 | IfElseSt e [Statment e] [Statment e]
-                                 | WhileSt e [Statment e]
+                                 | IfSt e [Statment e] SourcePos
+                                 | IfElseSt e [Statment e] [Statment e] SourcePos
+                                 | WhileSt e [Statment e] SourcePos 
                                  | NextSt (EState e) SourcePos
                                  | BreakSt
                                  | FunSt e -- Expr == FunExpr
                                  | ReturnSt e SourcePos
+                                 | WaitSt e Int SourcePos
                                    deriving (Show, Eq, Ord)
 
 

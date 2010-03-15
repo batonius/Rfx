@@ -167,25 +167,31 @@ statmentCompiler (AssignSt var expr _) = do
   exprCompiler expr
   addString $ ";\n"
 
-statmentCompiler (IfSt expr sts) = do
+statmentCompiler (IfSt expr sts _) = do
   makeIndent
   addString "if ("
   exprCompiler expr
   addString ")\n"
   statmentsCompiler sts
 
-statmentCompiler (IfElseSt expr sts1 sts2) = do
-  statmentCompiler (IfSt expr sts1)
+statmentCompiler (IfElseSt expr sts1 sts2 pos) = do
+  statmentCompiler (IfSt expr sts1 pos)
   addLine "else"
   statmentsCompiler sts2
 
-statmentCompiler (WhileSt expr sts) = do
+statmentCompiler (WhileSt expr sts _) = do
   makeIndent
   addString "while ("
   exprCompiler expr
   addString ")\n"
   statmentsCompiler sts
 
+statmentCompiler (WaitSt expr n _) = do
+  makeIndent
+  addString $ "wait " ++ (show n) ++ " ("
+  exprCompiler expr
+  addString ")\n"
+                    
 statmentCompiler (NextSt ThreadState{stateName} _) = do
   state <- getState stateName
   curThread <- getCurrentThread

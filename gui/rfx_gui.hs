@@ -23,21 +23,8 @@ onlyValidator = show . validateProgram . parseProgram . lexString
 fullCompiler :: String -> String
 fullCompiler = compileProgram defaultCompilerOptions . validateProgram . parseProgram . lexString
                 
-compileString :: Int -> String -> IO (Either (Int,String) String)
-compileString index string = do
-  let compiler = [fullCompiler, onlyValidator, onlyParser, onlyLexer] !! index
-      ret = compiler string
---  ret <- evaluate $ compiler string
---  ret <- return $! compiler string
-  hPutStr stderr $ ret -- OMG
-  return $ Right ret
-
-doCompile :: Int -> String -> IO (Either (Int,String) String)
-doCompile compIndex string = ((compileString compIndex string)
-                              `Control.Exception.catch`
-                              (\ (ex::RfxException) -> return $ Left ((getErrorLine ex), "Catch: " ++ (show ex))))
-                             `Control.Exception.catch`
-                             (\ (ex::SomeException) -> return $ Left (0, "Something wrong: " ++ (show ex)))
+compileString :: Int -> String -> String
+compileString index = [fullCompiler, onlyValidator, onlyParser, onlyLexer] !! index
 
 compileBuffers combo rfxSourceView resSourceView = do
     rfxBuffer <- textViewGetBuffer rfxSourceView
@@ -47,14 +34,18 @@ compileBuffers combo rfxSourceView resSourceView = do
     textBufferRemoveTagByName rfxBuffer "Error" startIter endIter
     inText <- get rfxBuffer textBufferText
     index <- get combo comboBoxActive
-    compiledText <- doCompile index inText 
-    case compiledText of
-      Right text -> set resBuffer [textBufferText := text]
-      Left (line, text) -> do
-        lineIter <- textBufferGetIterAtLineOffset rfxBuffer (line-1) 0
-        nLineIter <- textBufferGetIterAtLineOffset rfxBuffer (line) 0
-        textBufferApplyTagByName rfxBuffer "Error" lineIter nLineIter
-        set resBuffer [textBufferText := text]
+    let compiledText = compileString index inText
+    set resBuffer [textBufferText := compiledText]
+            `Control.Exception.catch`
+             (\ (ex::RfxException) -> do
+                let line = getErrorLine ex
+                lineIter <- textBufferGetIterAtLineOffset rfxBuffer (line-1) 0
+                nLineIter <- textBufferGetIterAtLineOffset rfxBuffer (line) 0
+                textBufferApplyTagByName rfxBuffer "Error" lineIter nLineIter
+                set resBuffer [textBufferText := (show ex)] )
+            `Control.Exception.catch`
+             (\ (ex::SomeException) -> do
+                set resBuffer [textBufferText := "Something wrong: " ++ (show ex)] )
 
 withFileChooser :: String -> Window -> FileChooserAction -> (FilePath -> IO ()) -> IO ()
 withFileChooser caption parent action work = do

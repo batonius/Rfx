@@ -32,6 +32,7 @@ data Token = NumberToken Int        -- Number
            | LsEqToken
            | DotToken
            | NextToken
+           | WaitToken
            | AssignToken            -- =
            | IdentifierToken String -- Atom
            | ThreadToken            -- "thread"
@@ -78,6 +79,7 @@ keywordTokens =
     , ("OR", OrToken)
     , ("XOR", XorToken)
     , ("NOT", NotToken)
+    , ("WAIT", WaitToken)
     , ("ПОТОК", ThreadToken)
     , ("СОСТОЯНИЕ", StateToken)
     , ("ЕСЛИ", IfToken)

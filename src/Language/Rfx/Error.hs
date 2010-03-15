@@ -71,8 +71,8 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | NoSuchTypeSemExc String SourcePos
                   | NoSuchThreadSemExc String SourcePos
                   | NoSuchStateSemExc String String SourcePos
-                  | IfNotBoolSemExc (Statment SynExpr)
-                  | WhileNotBoolSemExc (Statment SynExpr)
+                  | IfNotBoolSemExc (Statment SynExpr) SourcePos
+                  | WhileNotBoolSemExc (Statment SynExpr) SourcePos
                   | AssignWrongTypeSemExc (Statment SynExpr)
                   | OpSemExc SynExpr
                   | NoSuchVarSemExc VarName SourcePos
@@ -119,13 +119,13 @@ instance Show SemException where
     show _ = "Lolwut?"
                     
 instance Lined SemException where
-    getErrorLine (VarInVarInitSemExc (Var{varSourcePos})) = sourceLine varSourcePos + 1
-    getErrorLine (VarInitWrongTypeSemExc (Var{varSourcePos})) = sourceLine varSourcePos + 1
-    getErrorLine (VarAlreadyExistsSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos + 1
+    getErrorLine (VarInVarInitSemExc (Var{varSourcePos})) = sourceLine varSourcePos
+    getErrorLine (VarInitWrongTypeSemExc (Var{varSourcePos})) = sourceLine varSourcePos
+    getErrorLine (VarAlreadyExistsSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos
     getErrorLine (NoSuchTypeSemExc _ pos) = sourceLine pos 
     getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos
-    getErrorLine (NoSuchFuncSemExc _ pos) = sourceLine pos + 1
-    getErrorLine (FuncCallWrongTypeSemExc _ pos) = sourceLine pos + 1
+    getErrorLine (NoSuchFuncSemExc _ pos) = sourceLine pos
+    getErrorLine (FuncCallWrongTypeSemExc _ pos) = sourceLine pos
     getErrorLine (NoSuchVarSemExc varName pos) = case varName of
                                                VarName _ -> sourceLine pos
                                                LongVarName _ _ -> sourceLine pos

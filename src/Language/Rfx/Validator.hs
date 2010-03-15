@@ -56,7 +56,7 @@ validateVars pr vars = validateVars' vars [] where
                                                   :vVars)
 
 validateFunc :: Program SemExpr -> Func SynExpr -> Func SemExpr
-validateFunc pr synFunc@UserFunc{uFuncName, uFuncArgs, uFuncStatments, uFuncRetType, uFuncPos} = func
+validateFunc pr synFunc@UserFunc{uFuncName, uFuncStatments, uFuncRetType, uFuncPos} = func
     where
       func = if (vFuncType==VoidType) || (checkReturnPaths uFuncStatments)
              then UserFunc{uFuncName, uFuncArgs=vArgs, uFuncStatments=vStatments, uFuncRetType=vFuncType, uFuncPos}
@@ -69,18 +69,18 @@ validateFunc pr synFunc@UserFunc{uFuncName, uFuncArgs, uFuncStatments, uFuncRetT
 validateFunc _ _ = error "Buildin function validation"       
 
 validateStatment :: Program SemExpr -> ProgramPos SemExpr -> Statment SynExpr -> Statment SemExpr
-validateStatment pr scope st@(IfSt ex sts) =
+validateStatment pr scope st@(IfSt ex sts pos) =
     let valEx = validateExpr pr scope ex
     in if (typeOfExpr valEx == BoolType)
-       then IfSt valEx $ map (validateStatment pr scope) sts
-       else throw $ IfNotBoolSemExc st
+       then IfSt valEx (map (validateStatment pr scope) sts) pos
+       else throw $ IfNotBoolSemExc st pos
 
-validateStatment pr scope st@(IfElseSt ex ifSts elseSts) =
+validateStatment pr scope st@(IfElseSt ex ifSts elseSts pos) =
     let valEx = validateExpr pr scope ex
     in if (typeOfExpr valEx == BoolType)
        then IfElseSt valEx (map (validateStatment pr scope) ifSts)
-                (map (validateStatment pr scope) elseSts)
-       else throw $ IfNotBoolSemExc st
+                (map (validateStatment pr scope) elseSts) pos
+       else throw $ IfNotBoolSemExc st pos
 
 validateStatment _ _ BreakSt = BreakSt
                                
@@ -89,12 +89,18 @@ validateStatment _ scope (NextSt stateName pos) =
       (InState thread _) -> NextSt (stateByName thread stateName pos) pos
       _ -> throw $ NextNotInStateSemExc pos
 
-validateStatment pr scope st@(WhileSt ex sts) =
+validateStatment pr scope st@(WhileSt ex sts pos) =
     let valEx = validateExpr pr scope ex
     in if (typeOfExpr valEx == BoolType)
-       then WhileSt valEx $ map (validateStatment pr scope) sts
-       else throw $ WhileNotBoolSemExc st
+       then WhileSt valEx (map (validateStatment pr scope) sts) pos
+       else throw $ WhileNotBoolSemExc st pos
 
+validateStatment pr scope st@(WaitSt ex n pos) =
+    let valEx = validateExpr pr scope ex
+    in if (typeOfExpr valEx == BoolType)
+       then WaitSt valEx n pos
+       else throw $ WhileNotBoolSemExc st pos -- TODO own exception
+            
 validateStatment pr scope st@(AssignSt varName expr pos) =
     let valExpr = validateExpr pr scope expr
         valType = typeOfExpr valExpr
@@ -298,7 +304,7 @@ dropSubExpr e = let dse = dropSubExpr' e
 checkReturnPaths :: (Expression e) => [Statment e] -> Bool
 checkReturnPaths [] = False
 checkReturnPaths (ReturnSt{}:_) = True
-checkReturnPaths ((IfElseSt _ ifSts elseSts):restSts) =
+checkReturnPaths ((IfElseSt _ ifSts elseSts _):restSts) =
     checkReturnPaths restSts || (checkReturnPaths ifSts && checkReturnPaths elseSts)
 checkReturnPaths (_:restSts) = checkReturnPaths restSts
 
