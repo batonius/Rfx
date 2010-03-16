@@ -53,11 +53,14 @@
       <keyword>else</keyword>
       <keyword>break</keyword>
       <keyword>next</keyword>
+      <keyword>wait</keyword>
+      <keyword>return</keyword>
     </context>
 
     <context id="builtin-types" style-ref="type">
       <keyword>bool</keyword>
       <keyword>int8</keyword>
+      <keyword>time</keyword>
     </context>
 
     <context id="builtin-values" style-ref="decimal">

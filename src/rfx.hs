@@ -11,7 +11,6 @@ import Language.Rfx.Lexer
 import Language.Rfx.Parser
 import Language.Rfx.Error
 import System.Locale.SetLocale
-import Text.I18N.GetText
 import Control.Exception
 
 compileFile inFile = do
@@ -22,9 +21,6 @@ compileFile inFile = do
             
 main :: IO ()
 main = do
-  setLocale LC_ALL (Just "") 
-  bindTextDomain "rfx" (Just ".")
-  textDomain (Just "rfx")
   (inFile:_) <- getArgs
   inFileString <- readFile inFile
   (compileFile inFileString) `catch`

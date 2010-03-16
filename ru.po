@@ -1,0 +1,116 @@
+# Translation file
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-01-13 06:05-0800\n"
+"PO-Revision-Date: 2010-03-16 00:48+0000\n"
+"Last-Translator: Egor Karavaev <baton@buthost>\n"
+"Language-Team: Russian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%"
+"10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: src/Language/Rfx/Error.hs:0
+msgid "unexpected %s"
+msgstr "неожидаемый %s"
+
+#: src/Language/Rfx/Error.hs:0
+msgid "expected %s"
+msgstr "ожидаемый %s"
+
+#: src/Language/Rfx/Error.hs:0
+msgid "message %s"
+msgstr "сообщение %s"
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Lexer error: %s at %s."
+msgstr "Ошибка лексера: %s в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Syntax error: %s."
+msgstr "Синтаксическая ошибка: %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Syntax error: variable %s has too many parts at %s."
+msgstr "Синтаксичская ошибка: переменная %s в %s имеет слишком много частей."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "."
+msgstr ""
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: no such variable %s at %s."
+msgstr "Ошибка: переменная %s в %s не существует."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: incorrect usage of operator %s at %s."
+msgstr "Ошибка: неверное использование оператора %s в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: variable %s at position %s already defined at %s."
+msgstr "Ошибка: переменная %s в %s уже определена в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: wrong type of initialization expression of variable %s at %s"
+msgstr "Ошибка: неверный тип инициализирующего выражения переменной %s в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid ""
+"Error: usage variables in initialization exression prohibited; variable %s "
+"at %s."
+msgstr "Ошибка: использование переменных в инициализирующих выражениях запрещено, переменная %s в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: no such type %s at %s."
+msgstr "Ошибка: тип %s не существует, в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: no such thread %s at %s."
+msgstr "Ошибка: поток %s в %s не существует."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: no such state %s in thread %s at %s."
+msgstr "Ошибка: состояние %s в потоке %s в %s не существует."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: no such function %s at %s."
+msgstr "Ошибка: функция %s в %s не существует."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: wrong types of arguments of function %s at %s."
+msgstr "Ошибка: неверные типы агрументов функции %s в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: wrong type of expression in assigment to %s at %s."
+msgstr "Ошибка: неверный тип выражения в операции присваивания переменной %s в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: Next statment outside of state clause at %s."
+msgstr "Ошибка: оператор Next вне состояния в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: wrong type of argument of return statment at %s."
+msgstr "Ошибка: неверный тип аргумента оператора return в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: not all executoin paths in function %s return value."
+msgstr "Ошибка: не все пути выполнения функции %s возвращают значение."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: multiple definition of thread %s."
+msgstr "Ошибка: множественное определение потока %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: multiple definition of state %s in thread %s."
+msgstr "Ошибка: множественное определение состояния %s в потоке %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Error: statment argument type must be boolean at %s."
+msgstr "Ошибка: аргумент оператора дожен быть логическим в %s."
+
+#: src/Language/Rfx/Error.hs:0
+msgid "Lolwut?"
+msgstr ""

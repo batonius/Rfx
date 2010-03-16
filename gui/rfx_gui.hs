@@ -8,11 +8,9 @@ import Language.Rfx.Validator
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
 import Language.Rfx.Error
+import System.Directory
 import Control.Exception 
 import Prelude hiding (catch)
-import System.Locale.SetLocale
-import Text.I18N.GetText
-
 
 onlyLexer :: String -> String
 onlyLexer = show . lexString
@@ -66,9 +64,6 @@ withFileChooser caption parent action work = do
     else return ()
     
 main = do
-  setLocale LC_ALL (Just "") 
-  bindTextDomain "rfx" (Just ".")
-  textDomain (Just "rfx")
   initGUI
   window <- windowNew
   hBox <- hBoxNew False 2
@@ -85,6 +80,8 @@ main = do
   comboBoxSetActive outputComboBox 0
   buttonBox <- hButtonBoxNew
   languageManager <- sourceLanguageManagerNew
+  currentDirectory <- getCurrentDirectory
+  sourceLanguageManagerSetSearchPath languageManager $ Just $ [currentDirectory ++ "/gui"]
   cLanguage <- sourceLanguageManagerGetLanguage languageManager "c"
   resSourceView <- case cLanguage of
     (Just cLang) -> do

@@ -6,11 +6,10 @@ import Text.ParserCombinators.Parsec
 import Text.Parsec.Error
 import Data.Typeable
 import Text.Printf
-import Text.I18N.GetText
 import System.IO.Unsafe
 
 __ :: String -> String    
-__ = unsafePerformIO . getText
+__ = id
     
 class Lined a where
     getErrorLine :: a -> Int
