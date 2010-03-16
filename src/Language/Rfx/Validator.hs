@@ -73,16 +73,16 @@ validateStatment pr scope st@(IfSt ex sts pos) =
     let valEx = validateExpr pr scope ex
     in if (typeOfExpr valEx == BoolType)
        then IfSt valEx (map (validateStatment pr scope) sts) pos
-       else throw $ IfNotBoolSemExc st pos
+       else throw $ NeedBoolSemExc st
 
 validateStatment pr scope st@(IfElseSt ex ifSts elseSts pos) =
     let valEx = validateExpr pr scope ex
     in if (typeOfExpr valEx == BoolType)
        then IfElseSt valEx (map (validateStatment pr scope) ifSts)
                 (map (validateStatment pr scope) elseSts) pos
-       else throw $ IfNotBoolSemExc st pos
+       else throw $ NeedBoolSemExc st
 
-validateStatment _ _ BreakSt = BreakSt
+validateStatment _ _ (BreakSt pos) = (BreakSt pos)
                                
 validateStatment _ scope (NextSt stateName pos) =
     case scope of
@@ -93,13 +93,13 @@ validateStatment pr scope st@(WhileSt ex sts pos) =
     let valEx = validateExpr pr scope ex
     in if (typeOfExpr valEx == BoolType)
        then WhileSt valEx (map (validateStatment pr scope) sts) pos
-       else throw $ WhileNotBoolSemExc st pos
+       else throw $ NeedBoolSemExc st
 
 validateStatment pr scope st@(WaitSt ex n pos) =
     let valEx = validateExpr pr scope ex
     in if (typeOfExpr valEx == BoolType)
        then WaitSt valEx n pos
-       else throw $ WhileNotBoolSemExc st pos -- TODO own exception
+       else throw $ NeedBoolSemExc st
             
 validateStatment pr scope st@(AssignSt varName expr pos) =
     let valExpr = validateExpr pr scope expr
@@ -119,7 +119,7 @@ validateStatment pr scope (ReturnSt expr pos) =
        then ReturnSt vExpr pos
        else throw $ ReturnWrongTypeSemExc pos
             
-validateStatment pr scope (FunSt e) = FunSt $ validateExpr pr scope e
+validateStatment pr scope (FunSt e pos) = FunSt (validateExpr pr scope e) pos
 
 validateExpr :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
 validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPriority expr

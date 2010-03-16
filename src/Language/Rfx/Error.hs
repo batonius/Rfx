@@ -5,7 +5,13 @@ import Language.Rfx.Structures
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Error
 import Data.Typeable
+import Text.Printf
+import Text.I18N.GetText
+import System.IO.Unsafe
 
+__ :: String -> String    
+__ = unsafePerformIO . getText
+    
 class Lined a where
     getErrorLine :: a -> Int
     
@@ -38,15 +44,17 @@ instance Exception LexException where
 instance Lined LexException where
     getErrorLine (LexException parseError) = sourceLine $ errorPos $ parseError                     
 
-parsecMessage (SysUnExpect s) = "Unexpected " ++ s
-parsecMessage (UnExpect s) = "ue " ++ s
-parsecMessage (Expect s) = "e " ++ s
-parsecMessage (Message s) = "m " ++ s
+parsecMessage :: Message -> String
+parsecMessage (SysUnExpect s) = printf (__ "unexpected %s") s
+parsecMessage (UnExpect s) = printf (__ "unexpected %s") s
+parsecMessage (Expect s) = printf (__ "expected %s") s
+parsecMessage (Message s) = printf (__ "message %s") s
                      
 instance Show LexException where
-    show (LexException pe) = "Lexer error at "
-      ++ (show $ errorPos pe) ++ " :"
-      ++ (parsecMessage $ head $ errorMessages pe)
+    show (LexException pe) =
+        printf (__ "Lexer error: %s at %s.")
+                   (parsecMessage $ head $ errorMessages pe)
+                   (show $ errorPos pe)
 
 data SynException = SynException ParseError
                   | VarNameTooLongSynExc String SourcePos
@@ -57,9 +65,11 @@ instance Exception SynException where
      fromException = rfxExceptionFromException
 
 instance Show SynException where
-    show (SynException pe) = "Syn error: " ++ (parsecMessage $ head $ errorMessages pe)
-    show (VarNameTooLongSynExc varName pos) = "Syn error: Var name has too many parts: "
-                                          ++ varName ++ " at " ++ (show pos)
+    show (SynException pe) = printf (__ "Syntax error: %s.")
+                             (parsecMessage $ head $ errorMessages pe)
+
+    show (VarNameTooLongSynExc varName pos) = printf (__ "Syntax error: variable %s has too many parts at %s.")
+                                              varName (show pos)
 
 instance Lined SynException where
     getErrorLine (SynException parseError) = sourceLine $ errorPos $ parseError
@@ -71,8 +81,7 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | NoSuchTypeSemExc String SourcePos
                   | NoSuchThreadSemExc String SourcePos
                   | NoSuchStateSemExc String String SourcePos
-                  | IfNotBoolSemExc (Statment SynExpr) SourcePos
-                  | WhileNotBoolSemExc (Statment SynExpr) SourcePos
+                  | NeedBoolSemExc (Statment SynExpr)
                   | AssignWrongTypeSemExc (Statment SynExpr)
                   | OpSemExc SynExpr
                   | NoSuchVarSemExc VarName SourcePos
@@ -89,52 +98,77 @@ instance Exception SemException where
     toException = rfxExceptionToException
     fromException = rfxExceptionFromException
 
+fullVarName (VarName name) = name
+fullVarName (LongVarName thName varName) = thName ++ (__ ".") ++ varName
+
 instance Show SemException where
-    show (NoSuchVarSemExc varName pos) = case varName of
-                                       VarName name -> "No such variable " ++ name ++ " at " ++ (show pos)
-                                       LongVarName thName varName -> "No such variable " ++
-                                                                        thName ++ "." ++ varName ++ " at "
-                                                                        ++ (show pos)
-    show (OpSemExc (OpSynExpr op _ _ pos)) = "Incorrect usage of operator " ++ (show op) ++ " at " ++ (show pos)
-    show (VarAlreadyExistsSemExc (Var{varSourcePos, varName}) otherPos) = "Variable " ++ varName ++ " at "
-                                                                 ++ (show varSourcePos) ++ " already defined at " ++ (show otherPos)
-    show (VarInitWrongTypeSemExc (Var{varSourcePos, varName})) = "Wrong type of init expression of variable "
-                                                                 ++ varName ++ " at " ++ (show varSourcePos)
-    show (VarInVarInitSemExc (Var{varSourcePos, varName})) = "Variable in init expression of variable " ++ varName
-                                                             ++ " at " ++ (show varSourcePos)
-    show (NoSuchTypeSemExc typeName pos) = "No such type " ++ typeName ++ " at " ++ (show pos)
-    show (NoSuchThreadSemExc thName pos) = "No such thread " ++ thName ++ " at " ++ (show pos)
-    show (NoSuchStateSemExc thName stName pos) = "No such state " ++ stName ++ " in thread " ++ thName
-                                                 ++ " at " ++ (show pos)
-    show (NoSuchFuncSemExc (FuncName fn) pos) = "No such function " ++ fn ++ " at " ++ (show pos)
-    show (FuncCallWrongTypeSemExc func pos) = "Wrong types of arguments of function " ++ (funcName func) ++ " at " ++ (show pos)
-    show (AssignWrongTypeSemExc (AssignSt varName _ pos)) = case varName of
-                                                            VarName _ -> "Wrong type of rvalue at " ++ (show pos)
-                                                            LongVarName _ _ -> "Wrong type of rvalue at " ++ (show pos)
-    show (NextNotInStateSemExc pos) = "Next statment not inside state at " ++ (show pos)
-    show (ReturnWrongTypeSemExc pos) = "Wrong type of argument of return statment at " ++ (show pos)
-    show (ReturnPathsSemExc func) = "Not all paths in fuction " ++ (funcName func) ++ " return value"
-    show (ThreadAlreadyExistsSemExc thName) = "Thread " ++ thName ++ " already exists"
-    show (StateAlreadyExistsSemExc thName stName) = "State " ++ stName ++ " in thread " ++ thName ++ " already exists"
-    show _ = "Lolwut?"
+    show (NoSuchVarSemExc varName pos) =
+        printf (__ "Error: no such variable %s at %s.")
+                   (fullVarName varName) (show pos)
+    show (OpSemExc (OpSynExpr op _ _ pos)) =
+        printf (__ "Error: incorrect usage of operator %s at %s.")
+                   (show op) (show pos)
+    show (VarAlreadyExistsSemExc (Var{varSourcePos, varName}) otherPos) =
+        printf (__ "Error: variable %s at position %s already defined at %s.")
+               varName (show varSourcePos) (show otherPos)
+    show (VarInitWrongTypeSemExc (Var{varSourcePos, varName})) =
+        printf (__ "Error: wrong type of initialization expression of variable %s at %s")
+               varName (show varSourcePos)
+    show (VarInVarInitSemExc (Var{varSourcePos, varName})) =
+        printf (__ "Error: usage variables in initialization exression prohibited; variable %s at %s.")
+               varName (show varSourcePos)
+    show (NoSuchTypeSemExc typeName pos) =
+        printf (__ "Error: no such type %s at %s.")
+               typeName (show pos)
+    show (NoSuchThreadSemExc thName pos) =
+        printf (__ "Error: no such thread %s at %s.")
+               thName (show pos)
+    show (NoSuchStateSemExc thName stName pos) =
+        printf (__ "Error: no such state %s in thread %s at %s.")
+               stName thName (show pos)
+    show (NoSuchFuncSemExc (FuncName fn) pos) =
+        printf (__ "Error: no such function %s at %s.")
+               fn (show pos)
+    show (FuncCallWrongTypeSemExc func pos) =
+        printf (__ "Error: wrong types of arguments of function %s at %s.")
+               (funcName func) (show pos)
+    show (AssignWrongTypeSemExc (AssignSt varName _ pos)) =
+        printf (__ "Error: wrong type of expression in assigment to %s at %s.")
+               (fullVarName varName) (show pos)
+    show (NextNotInStateSemExc pos) =
+        printf (__ "Error: Next statment outside of state clause at %s.")
+               (show pos)
+    show (ReturnWrongTypeSemExc pos) =
+        printf (__ "Error: wrong type of argument of return statment at %s.")
+               (show pos)
+    show (ReturnPathsSemExc func) =
+        printf (__ "Error: not all executoin paths in function %s return value.")
+               (funcName func)
+    show (ThreadAlreadyExistsSemExc thName) =
+        printf (__ "Error: multiple definition of thread %s.")
+               thName
+    show (StateAlreadyExistsSemExc thName stName) =
+        printf (__ "Error: multiple definition of state %s in thread %s.")
+               stName thName
+    show (NeedBoolSemExc st) =
+        printf (__ "Error: statment argument type must be boolean at %s.")
+               (show $ statmentPos st)
+    show _ = (__ "Lolwut?")
                     
 instance Lined SemException where
-    getErrorLine (VarInVarInitSemExc (Var{varSourcePos})) = sourceLine varSourcePos
-    getErrorLine (VarInitWrongTypeSemExc (Var{varSourcePos})) = sourceLine varSourcePos
+    getErrorLine (VarInVarInitSemExc (Var{varSourcePos}))       = sourceLine varSourcePos
+    getErrorLine (VarInitWrongTypeSemExc (Var{varSourcePos}))   = sourceLine varSourcePos
     getErrorLine (VarAlreadyExistsSemExc (Var{varSourcePos}) _) = sourceLine varSourcePos
-    getErrorLine (NoSuchTypeSemExc _ pos) = sourceLine pos 
-    getErrorLine (OpSemExc (OpSynExpr _ _ _ pos)) = sourceLine pos
-    getErrorLine (NoSuchFuncSemExc _ pos) = sourceLine pos
-    getErrorLine (FuncCallWrongTypeSemExc _ pos) = sourceLine pos
-    getErrorLine (NoSuchVarSemExc varName pos) = case varName of
-                                               VarName _ -> sourceLine pos
-                                               LongVarName _ _ -> sourceLine pos
-    getErrorLine (NoSuchThreadSemExc _ pos) = sourceLine pos
-    getErrorLine (NoSuchStateSemExc _ _ pos) = sourceLine pos
-    getErrorLine (AssignWrongTypeSemExc (AssignSt varName _ pos)) = case varName of
-                                                            VarName _ -> sourceLine pos
-                                                            LongVarName _ _ -> sourceLine pos
-    getErrorLine (NextNotInStateSemExc pos) = sourceLine pos
-    getErrorLine (ReturnWrongTypeSemExc pos) = sourceLine pos
-    getErrorLine (ReturnPathsSemExc UserFunc{uFuncPos}) = sourceLine uFuncPos 
-    getErrorLine _ = 0
+    getErrorLine (NoSuchTypeSemExc _ pos)                       = sourceLine pos 
+    getErrorLine (OpSemExc (OpSynExpr _ _ _ pos))               = sourceLine pos
+    getErrorLine (NoSuchFuncSemExc _ pos)                       = sourceLine pos
+    getErrorLine (FuncCallWrongTypeSemExc _ pos)                = sourceLine pos
+    getErrorLine (NoSuchVarSemExc _ pos)                        = sourceLine pos
+    getErrorLine (NoSuchThreadSemExc _ pos)                     = sourceLine pos
+    getErrorLine (NoSuchStateSemExc _ _ pos)                    = sourceLine pos
+    getErrorLine (AssignWrongTypeSemExc (AssignSt _ _ pos))     = sourceLine pos
+    getErrorLine (NextNotInStateSemExc pos)                     = sourceLine pos
+    getErrorLine (ReturnWrongTypeSemExc pos)                    = sourceLine pos
+    getErrorLine (ReturnPathsSemExc UserFunc{uFuncPos})         = sourceLine uFuncPos
+    getErrorLine (NeedBoolSemExc st)                            = sourceLine $ statmentPos st
+    getErrorLine _                                              = 0

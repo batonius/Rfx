@@ -125,7 +125,8 @@ statmentParser = do
 breakParser :: TokenParser (Statment SynExpr)
 breakParser = do
   tokenParser BreakToken
-  return $ BreakSt
+  pos <- getPosition
+  return $ BreakSt pos
 
 whileParser :: TokenParser (Statment SynExpr)
 whileParser = do
@@ -178,7 +179,8 @@ assignParser = do
 funParser :: TokenParser (Statment SynExpr)
 funParser = do
   fun <- funExprParser
-  return $ FunSt fun
+  pos <- getPosition
+  return $ FunSt fun pos
 
 returnParser :: TokenParser (Statment SynExpr)
 returnParser = do

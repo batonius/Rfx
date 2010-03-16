@@ -10,6 +10,9 @@ import Language.Rfx.Parser
 import Language.Rfx.Error
 import Control.Exception 
 import Prelude hiding (catch)
+import System.Locale.SetLocale
+import Text.I18N.GetText
+
 
 onlyLexer :: String -> String
 onlyLexer = show . lexString
@@ -63,6 +66,9 @@ withFileChooser caption parent action work = do
     else return ()
     
 main = do
+  setLocale LC_ALL (Just "") 
+  bindTextDomain "rfx" (Just ".")
+  textDomain (Just "rfx")
   initGUI
   window <- windowNew
   hBox <- hBoxNew False 2

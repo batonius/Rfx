@@ -210,9 +210,9 @@ statmentCompiler (ReturnSt retExpr _) = do
     else exprCompiler retExpr
   addString ";\n"
             
-statmentCompiler BreakSt = addLine "break;"
+statmentCompiler BreakSt{} = addLine "break;"
 
-statmentCompiler (FunSt fun) = do
+statmentCompiler (FunSt fun _) = do
   makeIndent
   exprCompiler fun
   addString ";\n"

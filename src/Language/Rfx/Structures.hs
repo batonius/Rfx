@@ -24,7 +24,8 @@ module Language.Rfx.Structures(Program(..),
                                opTypes,
                                semOpTypes,
                                posChildOf,
-                               buildinFuncs)
+                               buildinFuncs,
+                               statmentPos)
 where
 import Language.Rfx.Util()
 import Text.ParserCombinators.Parsec(SourcePos)
@@ -254,13 +255,24 @@ data (Expression e) => Statment e = AssignSt (EVariable e) e SourcePos
                                  | IfElseSt e [Statment e] [Statment e] SourcePos
                                  | WhileSt e [Statment e] SourcePos 
                                  | NextSt (EState e) SourcePos
-                                 | BreakSt
-                                 | FunSt e -- Expr == FunExpr
+                                 | BreakSt SourcePos
+                                 | FunSt e SourcePos
                                  | ReturnSt e SourcePos
                                  | WaitSt e Int SourcePos
                                    deriving (Show, Eq, Ord)
 
-
+-- Functions
+statmentPos :: (Expression e) => Statment e -> SourcePos
+statmentPos (AssignSt _ _ pos) = pos
+statmentPos (IfSt _ _ pos) = pos
+statmentPos (IfElseSt _ _ _ pos) = pos
+statmentPos (WhileSt _ _ pos) = pos
+statmentPos (NextSt _ pos) = pos
+statmentPos (BreakSt pos) = pos
+statmentPos (FunSt _ pos) = pos
+statmentPos (ReturnSt _ pos) = pos
+statmentPos (WaitSt _ _ pos) = pos
+                                            
 funcName BuildinFunc{biFuncName} = biFuncName
 funcName UserFunc{uFuncName} = uFuncName
 
