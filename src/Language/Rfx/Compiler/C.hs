@@ -111,7 +111,7 @@ funcDefenitionCompiler func@UserFunc{uFuncArgs, uFuncStatments, uFuncRetType} = 
           where makeArgList' acc [] = acc
                 makeArgList' acc (var@Var{varType}:vars) =
                     makeArgList'
-                    ((if null acc then "" else ", ") ++ (typeName varType) ++ " " ++ (getVarFullName var))
+                    ((if null acc then "" else acc++", ") ++ (typeName varType) ++ " " ++ (getVarFullName var))
                     vars
   typeCompiler uFuncRetType
   addString " "
@@ -268,7 +268,9 @@ exprCompiler (OpSemExpr op le re) = do
       exprCompiler re
 
 exprCompiler (FunSemExpr func args) = do
-  addString (funcName func)
+  addString (case func of
+               uf@UserFunc{} -> getFuncName uf
+               BuildinFunc{biFuncName} -> biFuncName)
   addString "("
   let addArg [] = addString ")"
       addArg [a] = do
@@ -309,10 +311,10 @@ varDefenitionCompiler var = do
 getVarFullName :: Var SemExpr -> String
 getVarFullName var = "__rfx__" ++ (case (varScope var) of
                                     InGlobal -> ""
-                                    InThread Thread{threadName} -> (tlString threadName) ++ "_"
+                                    InThread Thread{threadName} -> "th_" ++ (tlString threadName) ++ "_"
                                     InState Thread{threadName} ThreadState{stateName} ->
-                                        (tlString threadName) ++ "_" ++ (tlString stateName) ++ "_"
-                                    InFunction UserFunc{uFuncName} -> "__func_" ++ uFuncName ++ "_"
+                                        "th_" ++ (tlString threadName) ++ "_" ++ (tlString stateName) ++ "_"
+                                    InFunction UserFunc{uFuncName} -> "func_" ++ uFuncName ++ "_"
                                     _ -> error "Variable in build-in function, wtf?")
                      ++ (tlString (varName var))
 

@@ -80,8 +80,6 @@ main = do
   comboBoxSetActive outputComboBox 0
   buttonBox <- hButtonBoxNew
   languageManager <- sourceLanguageManagerNew
-  currentDirectory <- getCurrentDirectory
-  sourceLanguageManagerSetSearchPath languageManager $ Just $ [currentDirectory ++ "/gui"]
   cLanguage <- sourceLanguageManagerGetLanguage languageManager "c"
   resSourceView <- case cLanguage of
     (Just cLang) -> do

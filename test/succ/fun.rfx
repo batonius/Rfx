@@ -1,8 +1,26 @@
+int8 global_var = 0;
+
+int8 max(int8 a, int8 b)
+	if a > b then
+		return a;
+	else
+		return b;
+	end;
+end;
+
+bool isMax(int8 a, int8 b)
+	return a > b;
+end;
+
 thread a where
-  state aa where
-        fun(1, 2, 3+4);
-  end;
-  state aaa where
-        bool vr = fun2();
-  end;
+	int8 state_var = 0;
+	state aa where
+		max(global_var, state_var+global_var);
+		if isMax(global_var*state_var, 0) then
+			next aaa;
+		end;
+	end;
+	state aaa where
+			
+	end;
 end;

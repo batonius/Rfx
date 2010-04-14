@@ -62,7 +62,6 @@ validateFunc pr synFunc@UserFunc{uFuncName, uFuncStatments, uFuncRetType, uFuncP
              then UserFunc{uFuncName, uFuncArgs=vArgs, uFuncStatments=vStatments, uFuncRetType=vFuncType, uFuncPos}
              else throw $ ReturnPathsSemExc synFunc
       vFuncType = validateType uFuncRetType uFuncPos
---      vArgs = map (\Var{varName} -> varByName pr (InFunction func) (VarName varName) uFuncPos) uFuncArgs -- TODO do it right
       vArgs = reverse $ filter (\Var{varScope, varArg} -> varArg && (varScope==InFunction func)) $ programVars pr
       vStatments = map (validateStatment pr (InFunction func)) uFuncStatments
 
