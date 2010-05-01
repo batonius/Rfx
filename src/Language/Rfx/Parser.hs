@@ -15,7 +15,7 @@ data ParserState = ParserState
                    ,parserLastWait :: Int
                  }
 
-parserState = ParserState [] 0                 
+parserState = ParserState [] 1
     
 parseProgram :: [Tagged Token] -> Program SynExpr
 parseProgram ts = case runParser programParser parserState "" ts of
@@ -335,7 +335,7 @@ timeParser = tokenTestParser(\x -> case x of
 zeroLastWait :: TokenParser ()
 zeroLastWait = do
   state <- getState
-  setState state{parserLastWait=0}
+  setState state{parserLastWait=1}
 
 incLastWait :: TokenParser Int
 incLastWait = do

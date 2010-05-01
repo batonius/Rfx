@@ -40,26 +40,51 @@ programCompiler program = do
               addLine $ "};"
              | thread <- threads]
   -- Global vars
+  addLine "/* Global vars */"
   globalVars <- getVarsFromScope InGlobal
   sequence_ [varDefenitionCompiler var | var <- globalVars]
   -- User functions
+  addLine "/* User functions */"
   sequence_ [funcDefenitionCompiler func | func <- funcs]
   -- Thread vars
+  addLine "/* Thread-scope vars */"
   sequence_ [do
               threadVars <- getVarsFromScope $ InThread thread
               sequence_ [ varDefenitionCompiler var
                               | var <- threadVars]
                   | thread <- threads]
+  -- States vars
+  sequence_ [ do
+              addLine $ "/* State-scope vars from thread" ++ threadName thread ++ "*/"
+              sequence_ [do
+                          addLine $ "/*\tVars form state" ++ stateName state ++  "*/"
+                          stateVars <- getVarsFromScope $ InState thread state
+                          sequence_ [ varDefenitionCompiler var
+                                      | var <- stateVars]
+                          | state <- threadStates thread]
+              | thread <- threads]
   -- States array
+  addLine "/* Thread state array */"
   addLine $ "int __rfx_states[__RFX_THREAD_COUNT] = {" ++ (concat $ map
     (\th -> if (not.null) (threadStates th)
             then (getStateName th (head $ threadStates th)) ++ ", "
             else "ERROR LOL")
     threads) ++ "};"
-  if (not.null) threads 
+  -- States state array
+  addLine "/* States state array */"
+  sequence_ [do
+              let statesCount = length $ threadStates thread;
+              addLine $ "int " ++ (getThreadStateArrayName thread)
+                     ++ "[" ++ (show statesCount) ++ "] = {"
+              sequence_ [ addString "0, " | _ <- [1..statesCount]]
+              addLine "};"
+              | thread <- threads]
+  --
+  if (not.null) threads
     then addLine $ "int __rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
     else return ()
   --States funs
+  addLine "/* States functions */"
   sequence_ [do
               enterThread thread
               sequence_ [do
@@ -67,6 +92,7 @@ programCompiler program = do
                           | state <- threadStates thread]
              | thread <- threads]
   --Main rfx fun
+  addLine "/* Scheduler */"
   addLine "void __rfx_next()"
   addLine "{"
   addIndent
@@ -130,18 +156,28 @@ funcDefenitionCompiler func@UserFunc{uFuncArgs, uFuncStatments, uFuncRetType} = 
   subIndent
   addLine "}"
 funcDefenitionCompiler _ = error "No defenitino for buildin functions"
-          
+
 stateCompiler :: Thread SemExpr -> ThreadState SemExpr -> Compiler ()
 stateCompiler thread state = do
+  enterState state
   addLine "\nvoid"
   addLine $ (getStateName thread state) ++ "_fun()"
   addLine "{"
   addIndent
+  addLine $ "switch (" ++ getThreadStateArrayName thread
+          ++ "[" ++ (getStateName thread state) ++ "])"
+  addLine "{"
+  addLine "case 0:"
+  addIndent
   stateVars <- getVarsFromScope $ InState thread state
-  sequence_ [varDefenitionCompiler var | var <- stateVars]
+  sequence_ [ statmentCompiler (AssignSt var (varInitValue var) (varSourcePos var))
+                  | var <- stateVars]
   sequence_ [do
               statmentCompiler st
              | st <- stateStatments state]
+  addLine "return;"
+  subIndent
+  addLine "}"
   subIndent
   addLine "}"
 
@@ -182,11 +218,27 @@ statmentCompiler (WhileSt expr sts _) = do
   statmentsCompiler sts
 
 statmentCompiler (WaitSt expr n _) = do
+  thread <- getCurrentThread
+  state <- getCurrentState
+  subIndent
+  addLine $ "case " ++ show n ++ ":"
+  addIndent
   makeIndent
-  addString $ "wait " ++ (show n) ++ " ("
+  addString $ "if ("
   exprCompiler expr
   addString ")\n"
-                    
+  withIndent $
+             addLine $ getThreadStateArrayName thread ++ "["
+                         ++ getStateName thread state ++ "] = 0;"
+  addLine "else"
+  addLine "{"
+  withIndent $ do
+    addLine $ getThreadStateArrayName thread ++ "["
+                ++ getStateName thread state ++ "] = "
+                ++ show n ++ ";"
+    addLine $ "return;"
+  addLine "}"
+
 statmentCompiler (NextSt ThreadState{stateName} _) = do
   state <- getState stateName
   curThread <- getCurrentThread
@@ -204,7 +256,7 @@ statmentCompiler (ReturnSt retExpr _) = do
     then return ()
     else exprCompiler retExpr
   addString ";\n"
-            
+
 statmentCompiler BreakSt{} = addLine "break;"
 
 statmentCompiler (FunSt fun _) = do
@@ -217,12 +269,12 @@ statmentCompiler (FunSt fun _) = do
 exprCompiler :: SemExpr -> Compiler ()
 exprCompiler (NumSemExpr n) = addString $ (show n) ++ " "
 
-exprCompiler (TimeSemExpr t) = addString $ (show t) ++ " "                              
+exprCompiler (TimeSemExpr t) = addString $ (show t) ++ " "
 
 exprCompiler (StringSemExpr s) = addString $ "\"" ++ s ++ "\" "
 
 exprCompiler (BoolSemExpr b) = addString $ if b then "TRUE " else  "FALSE "
-                                 
+
 exprCompiler (SubSemExpr e) = do
   addString "( "
   exprCompiler e
@@ -278,7 +330,7 @@ exprCompiler (FunSemExpr func args) = do
   addArg args
 
 exprCompiler VoidSemExpr = error "Compiling void expression"
-         
+
 varCompiler :: Var SemExpr -> Compiler ()
 varCompiler v = do
   addString $ (getVarFullName v) ++ " "
@@ -292,7 +344,7 @@ typeName tp = case tp of
                 BoolType -> "BOOL"
                 VoidType -> "void"
                 _ -> "int"
-                                    
+
 varDefenitionCompiler :: Var SemExpr -> Compiler ()
 varDefenitionCompiler var = do
   makeIndent
@@ -322,3 +374,5 @@ getStateName th st = "__rfx_state__" ++ (tlString $ threadName th) ++ "_" ++ (tl
 getFuncName :: Func SemExpr -> String
 getFuncName UserFunc{uFuncName} = "__rfx_func__" ++ (tlString $ uFuncName)
 getFuncName _ = error "Get buildin function name, wtf?"
+
+getThreadStateArrayName th = getThreadName th ++ "_state"

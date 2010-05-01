@@ -5,7 +5,7 @@ import Control.Monad.State
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Language.Rfx.Structures
-    
+
 data CompilerTarget = PIC | ARM | ANSI deriving (Eq, Show)
 data CompilerLanguage = C | Dot | ST | Python deriving (Eq, Show)
 data CompilerOptions = CompilerOptions
@@ -22,6 +22,7 @@ data CompilerState = CompilerState
                    , compilerIndent :: Int
                    , compilerVars :: Set.Set (Var SemExpr)
                    , compilerCurrentThread :: Thread SemExpr
+                   , compilerCurrentState :: ThreadState SemExpr
                    } deriving (Eq, Show)
 
 type Compiler a = State CompilerState a
@@ -31,10 +32,16 @@ addString s = State (\state -> ((), state{compilerCode=(compilerCode state)++s})
 
 dropLastChar ::Compiler ()
 dropLastChar = State (\state -> ((), state{compilerCode = init (compilerCode state)}))
-              
+
 makeIndent :: Compiler ()
 makeIndent = State (\state -> ((), state{compilerCode=(compilerCode state)
                                           ++ (replicate (compilerIndent state) ' ')}))
+
+withIndent :: Compiler () -> Compiler ()
+withIndent compiler = do
+  addIndent
+  compiler
+  subIndent
 
 addLine :: String -> Compiler ()
 addLine s = do
@@ -77,6 +84,12 @@ enterThread th =State(\state -> ((),state{compilerCurrentThread = th}))
 
 getCurrentThread :: Compiler (Thread SemExpr)
 getCurrentThread = State(\state -> ((compilerCurrentThread state), state))
+
+getCurrentState :: Compiler (ThreadState SemExpr)
+getCurrentState = State(\state -> ((compilerCurrentState state), state))
+
+enterState :: ThreadState SemExpr -> Compiler ()
+enterState st = State(\state -> ((), state{compilerCurrentState=st}))
 
 getState :: String -> Compiler (ThreadState SemExpr)
 getState stName = do

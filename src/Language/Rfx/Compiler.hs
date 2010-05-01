@@ -18,4 +18,4 @@ compileProgram op pr = let compiler = case compilerLanguage op of
                                         _ -> C.programCompiler
                        in
                          compilerCode $ execState (compiler pr) $ CompilerState "" op Map.empty
-                                          0 (Set.fromList (programVars pr)) (Thread "" [])
+                                          0 (Set.fromList (programVars pr)) (Thread "" []) (ThreadState "" [])

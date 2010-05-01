@@ -1,0 +1,12 @@
+bool bool_var = False;
+
+thread testThread where
+       state testState where
+             int8 a = 10;
+             //Prewait
+             bool_var = False;
+             wait a == 11;
+             //Postwait
+             a = 0;
+       end;
+end;       
