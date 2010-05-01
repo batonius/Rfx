@@ -91,8 +91,12 @@ lexerMultiKeywordsTest :: Assertion
 lexerMultiKeywordsTest = do
   "if-thread" `lexerAssert` [IfToken, MinusToken, ThreadToken]
   "ifthread" `lexerAssert` [IdentifierToken "ifthread"]
-  "if(thread)+state\tend" `lexerAssert` [IfToken, LParToken, ThreadToken, RParToken, PlusToken, StateToken, EndToken]
-  "if\nthread\nstate" `lexerAssert` [IfToken, ThreadToken, StateToken]
+  "if(thread)+state\tend" `lexerAssert` [IfToken, LParToken,
+                                         ThreadToken, RParToken,
+                                         PlusToken, StateToken,
+                                         EndToken]
+  "if\nthread\nstate" `lexerAssert` [IfToken, ThreadToken,
+                                     StateToken]
 
 lexerComplexIdentifierTest :: Assertion
 lexerComplexIdentifierTest = do

@@ -27,7 +27,6 @@ module Language.Rfx.Structures(Program(..),
                                buildinFuncs,
                                statmentPos)
 where
-import Language.Rfx.Util()
 import Text.ParserCombinators.Parsec(SourcePos)
 import qualified Data.Map as Map
 
@@ -249,7 +248,7 @@ data SemOper = NumPlusSemOp
              | TimeLsEqlSemOp
                deriving (Show, Eq, Ord)
 
--- Statments
+-- StatEments, lol
 data (Expression e) => Statment e = AssignSt (EVariable e) e SourcePos
                                  | IfSt e [Statment e] SourcePos
                                  | IfElseSt e [Statment e] [Statment e] SourcePos

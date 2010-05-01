@@ -10,7 +10,7 @@ programCompiler program = do
   let threads = programThreads program
   let funcs = filter (not.buildinFunc) $ programFuncs program
   let threadsLen = length threads
-  addLine "/*Rfx was here*/"
+  addLine "/*Rfx was here, lol*/"
   addLine "#define XOR(x,y) ((x) ? !(y) : (y))"
   addLine "#define BOOL int"
   addLine "#define TRUE 1"
@@ -118,11 +118,6 @@ funcDefenitionCompiler func@UserFunc{uFuncArgs, uFuncStatments, uFuncRetType} = 
   addString $ getFuncName func
   addString "("
   addString $ makeArgList uFuncArgs
-  -- sequence_ [do
-  --             typeCompiler varType
-  --             addString (" " ++ (getVarFullName var) ++ ",")
-  --            | var@Var{varType} <- uFuncArgs]
-  -- dropLastChar
   addString ")\n"
   addLine "{"
   addIndent

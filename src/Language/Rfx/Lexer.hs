@@ -1,5 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
-module Language.Rfx.Lexer (lexString, Tagged(..))
+module Language.Rfx.Lexer (lexString)
 where
 import Language.Rfx.Tokens
 import Language.Rfx.Error

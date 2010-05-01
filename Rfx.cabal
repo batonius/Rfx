@@ -7,7 +7,7 @@ Synopsis:
 Build-Type:     Simple
 
 Executable rfx
-  Build-Depends:  utf8-string >= 0.3, parsec >= 3, containers >= 0.2, base >= 3, mtl >= 1.1, setlocale >= 0.0.3
+  Build-Depends:  utf8-string >= 0.3, parsec >= 3, containers >= 0.2, base >= 3, mtl >= 1.1
   Main-Is:        rfx.hs
   ghc-options:    -Wall
   Hs-Source-Dirs: src

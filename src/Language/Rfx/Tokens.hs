@@ -16,8 +16,8 @@ instance Eq a => Eq (Tagged a) where
     (Tagged _ x) == (Tagged _ y) = x == y
 
 data Token = NumberToken Int        -- Number
-           | StringToken String
-           | TimeToken Integer
+           | StringToken String     -- String
+           | TimeToken Integer      -- Time
            | PlusToken              -- +
            | MinusToken             -- -
            | AsteriskToken          -- *
@@ -26,13 +26,13 @@ data Token = NumberToken Int        -- Number
            | RParToken              -- )
            | EqualToken             -- ==
            | NEqualToken            -- !=
-           | GrToken
-           | LsToken
-           | GrEqToken
-           | LsEqToken
-           | DotToken
-           | NextToken
-           | WaitToken
+           | GrToken                -- >
+           | LsToken                -- <
+           | GrEqToken              -- >=
+           | LsEqToken              -- <=
+           | DotToken               -- .
+           | NextToken              -- "next"
+           | WaitToken              -- "wait"
            | AssignToken            -- =
            | IdentifierToken String -- Atom
            | ThreadToken            -- "thread"
@@ -44,17 +44,17 @@ data Token = NumberToken Int        -- Number
            | SemicolonToken         -- ;
            | WhereToken             -- "where"
            | WhileToken             -- "while"
-           | DoToken
-           | ReturnToken
-           | CommaToken
+           | DoToken                -- "do"
+           | ReturnToken            -- "return"
+           | CommaToken             -- ,
            | BreakToken             -- "break"
-           | TrueToken
-           | FalseToken
-           | AndToken
-           | OrToken
-           | XorToken
-           | NotToken
-           | VoidToken
+           | TrueToken              -- "true"
+           | FalseToken             -- "false"
+           | AndToken               -- "and"
+           | OrToken                -- "or"
+           | XorToken               -- "xor"
+           | NotToken               -- "not"
+           | VoidToken              -- "void"
            | EOFToken
            | CommentToken
              deriving (Show, Eq)
