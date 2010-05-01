@@ -42,7 +42,7 @@ validateVars pr vars = validateVars' vars [] where
           vVarType = validateType varType varSourcePos
       in if (not.null) $ usedVars vInitVal
            then throw $ VarInVarInitSemExc var
-           else if (not varArg) && ((typeOfExpr vInitVal /= vVarType) || (vVarType == VoidType))  -- TODO Make exception
+           else if (not varArg) && (not (typeOfExpr vInitVal `typeCanBe` vVarType) || (vVarType == VoidType))  -- TODO Make exception
                 then throw $ VarInitWrongTypeSemExc var
                 else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
                      in if (not.null)  sameVars
@@ -104,7 +104,7 @@ validateStatment pr scope st@(AssignSt varName expr pos) =
     let valExpr = validateExpr pr scope expr
         valType = typeOfExpr valExpr
         var = varByName pr scope varName pos
-    in if (varType var == valType)
+    in if (valType `typeCanBe` varType var)
        then AssignSt var valExpr pos
        else throw $ AssignWrongTypeSemExc st
 
@@ -112,7 +112,7 @@ validateStatment pr scope (ReturnSt expr pos) =
     let vExpr = validateExpr pr scope expr
         ok = (case scope of
                 InState{} -> voidExpr vExpr
-                InFunction UserFunc{uFuncRetType} -> typeOfExpr vExpr == uFuncRetType
+                InFunction UserFunc{uFuncRetType} -> typeOfExpr vExpr `typeCanBe` uFuncRetType
                 _ -> error "Cannot be retun here, wtf?")
     in if ok
        then ReturnSt vExpr pos
@@ -133,7 +133,7 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' pr scope (FunSynExpr exprFunc args pos) =
           let vArgs = map (validateExpr' pr scope) args
               func = funcByName pr exprFunc pos
-          in if (funcArgsTypes func) == (map typeOfExpr vArgs)
+          in if and $ zipWith typeCanBe (map typeOfExpr vArgs) (funcArgsTypes func)
              then FunSemExpr func vArgs
              else throw $ FuncCallWrongTypeSemExc func pos
       validateExpr' pr scope (SubSynExpr e) = SubSemExpr $ validateExpr' pr scope e
@@ -143,20 +143,22 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
               vlType = typeOfExpr vlExpr
               vrType = typeOfExpr vrExpr
               (Just synOps) = Map.lookup op opTypes
-              (semOp,_) = let ops = filter (\(so, (lt, rt, _)) ->
-                                                (lt == vlType)
-                                                && (rt == vrType)
-                                                && (so `elem` synOps))
-                                    $ semOpTypes
-                          in if null ops
-                             then throw $ OpSemExc exp
-                             else head ops
-          in OpSemExpr semOp vlExpr vrExpr
+              (semOp,(_,_,opRetType)) = let ops = filter (\(so, (lt, rt, _)) ->
+                                                              (vlType `typeCanBe` lt)
+                                                          && (vrType `typeCanBe` rt)
+                                                          && (so `elem` synOps))
+                                                  $ semOpTypes
+                                        in if null ops
+                                           then throw $ OpSemExc exp
+                                           else head ops
+          in OpSemExpr semOp vlExpr vrExpr opRetType
 
 validateType :: VarTypeName -> SourcePos -> VarType
 validateType (VarTypeName typeName) pos = case Map.lookup typeName
                                              $ Map.fromList
                                              $ [("int8", Int8Type)
+                                               ,("int16", Int16Type)
+                                               ,("int32", Int32Type)
                                                ,("bool", BoolType)
                                                ,("string", StringType)
                                                ,("time", TimeType)
@@ -210,7 +212,7 @@ varByName ~Program{programVars} scope varName pos =
 -- Aux fucntions
 usedVars :: SemExpr -> [Var SemExpr]
 usedVars (VarSemExpr var) = [var]
-usedVars (OpSemExpr _ leftExpr rightExpr ) = (usedVars leftExpr) ++ (usedVars rightExpr)
+usedVars (OpSemExpr _ leftExpr rightExpr _ ) = (usedVars leftExpr) ++ (usedVars rightExpr)
 usedVars (SubSemExpr subExpr) = usedVars subExpr
 usedVars (FunSemExpr _ args) = concat $ map usedVars args
 usedVars _ = []
@@ -228,18 +230,17 @@ scopeVars :: (Expression a) => ProgramPos a -> [Var a] -> [Var a]
 scopeVars scope = filter (\Var{varScope} -> scope `posChildOf` varScope)
 
 typeOfExpr :: SemExpr -> VarType
-typeOfExpr (NumSemExpr _) = Int8Type -- TODO
+typeOfExpr (NumSemExpr n) | n<2^7 && n>(-2)^7 = Int8Type
+                          | n<2^15 && n>(-2)^15 = Int16Type
+                          | n<2^31 && n>(-2)^31 = Int32Type
+                          | otherwise = throw $ IntTooBigSemExc n
 typeOfExpr (BoolSemExpr _) = BoolType
 typeOfExpr (TimeSemExpr _) = TimeType
 typeOfExpr (StringSemExpr _) = StringType
 typeOfExpr (VarSemExpr Var{varType}) = varType
 typeOfExpr (FunSemExpr func _ ) = funcRetType func
 typeOfExpr (SubSemExpr se) = typeOfExpr se
-typeOfExpr (OpSemExpr semOp _ _ ) = opType
-    where (_ , (_, _, opType)) = let ops = filter ((==semOp).fst) semOpTypes
-                                 in if null ops
-                                    then error $ "No such oper" ++ (show semOp) -- User error? No
-                                    else head ops
+typeOfExpr (OpSemExpr _ _ _ opRetType) = opRetType
 typeOfExpr VoidSemExpr = VoidType
                                                                
 priorityList :: [[SynOper]]

@@ -2,7 +2,7 @@ int8 global_var1 = 1;
 int8 gl_var_2_ = 2;
 
 thread a where
-  int8 th_var_1 = 1;
+  int16 th_var_1 = 1;
   state aab where
       int8 state_var_1 = 10;
       state_var_1 = 5;
@@ -16,7 +16,7 @@ thread a where
 end;
 
 thread c where
-  int8 th_var_1 = 100;
+  int16 th_var_1 = 100;
   state cc where
      int8 state_var_1 = 70;
      th_var_1 = 4;

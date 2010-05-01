@@ -1,0 +1,7 @@
+int8 char = 0;
+int16 short = 0;
+thread a where
+       state b where
+             char = short;
+       end;
+end;

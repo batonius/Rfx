@@ -25,7 +25,8 @@ module Language.Rfx.Structures(Program(..),
                                semOpTypes,
                                posChildOf,
                                buildinFuncs,
-                               statmentPos)
+                               statmentPos,
+                               typeCanBe)
 where
 import Text.ParserCombinators.Parsec(SourcePos)
 import qualified Data.Map as Map
@@ -62,6 +63,8 @@ data (Expression e) => Var e = Var
     } deriving (Show, Ord)
 
 data VarType = Int8Type
+             | Int16Type
+             | Int32Type
              | BoolType
              | StringType
              | TimeType
@@ -123,7 +126,7 @@ class (Eq e
 
 -- Expr instances                
 data SynExpr = NumSynExpr Int
-             | OpSynExpr SynOper SynExpr SynExpr SourcePos
+             | OpSynExpr SynOper SynExpr SynExpr SourcePos 
              | VarSynExpr (EVariable SynExpr) SourcePos
              | SubSynExpr SynExpr
              | FunSynExpr (EFunction SynExpr) [SynExpr] SourcePos
@@ -155,7 +158,7 @@ instance Expression SynExpr where
     voidExpr _ = False
 
 data SemExpr = NumSemExpr Int
-             | OpSemExpr SemOper SemExpr SemExpr
+             | OpSemExpr SemOper SemExpr SemExpr VarType
              | VarSemExpr (EVariable SemExpr)
              | SubSemExpr SemExpr
              | FunSemExpr (EFunction SemExpr) [SemExpr]
@@ -284,6 +287,12 @@ funcRetType UserFunc{uFuncRetType} = uFuncRetType
 funcArgsTypes BuildinFunc{biFuncArgs} = biFuncArgs
 funcArgsTypes UserFunc{uFuncArgs} = map varType uFuncArgs
 
+typeCanBe :: VarType -> VarType -> Bool
+Int8Type `typeCanBe` Int16Type = True
+Int8Type `typeCanBe` Int32Type = True
+Int16Type `typeCanBe` Int32Type = True
+typeCanBe a b = a == b
+                                    
 posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
 posChildOf _ InGlobal = True
 posChildOf (InFunction f) (InFunction g) = f == g
@@ -316,28 +325,28 @@ opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp, TimePlusSemOp])
 
 
 semOpTypes :: [(SemOper, (VarType, VarType, VarType))]
-semOpTypes =[(NumPlusSemOp, (Int8Type, Int8Type, Int8Type))
-            ,(NumMinusSemOp, (Int8Type, Int8Type, Int8Type))
-            ,(NumMulSemOp, (Int8Type, Int8Type, Int8Type))
-            ,(NumEqlSemOp, (Int8Type, Int8Type, BoolType))
-            ,(NumLsSemOp, (Int8Type, Int8Type, BoolType))
-            ,(NumGrSemOp, (Int8Type, Int8Type, BoolType))
-            ,(NumLsEqlSemOp, (Int8Type, Int8Type, BoolType))
-            ,(NumGrEqlSemOp, (Int8Type, Int8Type, BoolType))
-            ,(NumNEqlSemOp, (Int8Type, Int8Type, Int8Type))
-            ,(NumDivSemOp, (Int8Type, Int8Type, Int8Type))
-            ,(BoolAndSemOp, (BoolType, BoolType, BoolType))
-            ,(BoolOrSemOp, (BoolType, BoolType, BoolType))
-            ,(BoolXorSemOp, (BoolType, BoolType, BoolType))
-            ,(TimePlusSemOp, (TimeType, TimeType, TimeType))
-            ,(TimeMinusSemOp, (TimeType, TimeType, TimeType))
-            ,(TimeEqlSemOp, (TimeType, TimeType, BoolType))
-            ,(TimeLsSemOp, (TimeType, TimeType, BoolType))
-            ,(TimeGrSemOp, (TimeType, TimeType, BoolType))
-            ,(TimeLsEqlSemOp, (TimeType, TimeType, BoolType))
-            ,(TimeGrEqlSemOp, (TimeType, TimeType, BoolType))
-            ,(TimeNEqlSemOp, (TimeType, TimeType, TimeType))
-            ]
+semOpTypes = concat [[(NumPlusSemOp, (numType, numType, numType))
+                     ,(NumMinusSemOp, (numType, numType, numType))
+                     ,(NumMulSemOp, (numType, numType, numType))
+                     ,(NumDivSemOp, (numType, numType, numType))]
+                     | numType <- [Int8Type, Int16Type, Int32Type]]
+             ++ [(NumEqlSemOp, (Int32Type, Int32Type, BoolType)) -- Int32 - most general numeric type
+                ,(NumLsSemOp, (Int32Type, Int32Type, BoolType))
+                ,(NumGrSemOp, (Int32Type, Int32Type, BoolType))
+                ,(NumLsEqlSemOp, (Int32Type, Int32Type, BoolType))
+                ,(NumGrEqlSemOp, (Int32Type, Int32Type, BoolType))
+                ,(NumNEqlSemOp, (Int32Type, Int32Type, BoolType))
+                ,(BoolAndSemOp, (BoolType, BoolType, BoolType))
+                ,(BoolOrSemOp, (BoolType, BoolType, BoolType))
+                ,(BoolXorSemOp, (BoolType, BoolType, BoolType))
+                ,(TimePlusSemOp, (TimeType, TimeType, TimeType))
+                ,(TimeMinusSemOp, (TimeType, TimeType, TimeType))
+                ,(TimeEqlSemOp, (TimeType, TimeType, BoolType))
+                ,(TimeLsSemOp, (TimeType, TimeType, BoolType))
+                ,(TimeGrSemOp, (TimeType, TimeType, BoolType))
+                ,(TimeLsEqlSemOp, (TimeType, TimeType, BoolType))
+                ,(TimeGrEqlSemOp, (TimeType, TimeType, BoolType))
+                ,(TimeNEqlSemOp, (TimeType, TimeType, TimeType))]
 
 buildinFuncs :: [Func SemExpr]
 buildinFuncs = [BuildinFunc{biFuncName="neg"

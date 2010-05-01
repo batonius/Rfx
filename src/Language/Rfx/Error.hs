@@ -6,7 +6,6 @@ import Text.ParserCombinators.Parsec
 import Text.Parsec.Error
 import Data.Typeable
 import Text.Printf
-import System.IO.Unsafe
 
 __ :: String -> String    
 __ = id
@@ -91,6 +90,8 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | ReturnPathsSemExc (Func SynExpr)
                   | ThreadAlreadyExistsSemExc String
                   | StateAlreadyExistsSemExc String String
+                  -- describe
+                  | IntTooBigSemExc Int
                     deriving Typeable
 
 instance Exception SemException where

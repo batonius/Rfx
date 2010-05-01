@@ -281,13 +281,14 @@ exprCompiler (SubSemExpr e) = do
   addString ") "
 
 exprCompiler (VarSemExpr v) = varCompiler v
-exprCompiler (OpSemExpr op le re) = do
+exprCompiler (OpSemExpr op le re _) = do
   if op == BoolXorSemOp
     then do
       addString("XOR(")
       exprCompiler le
       addString(", ")
       exprCompiler re
+      addString(")")
     else do
       exprCompiler le
       addString $ case op of
@@ -343,6 +344,9 @@ typeName tp = case tp of
                 TimeType -> "long int"
                 BoolType -> "BOOL"
                 VoidType -> "void"
+                Int8Type -> "char"
+                Int16Type -> "short"
+                Int32Type -> "int"
                 _ -> "int"
 
 varDefenitionCompiler :: Var SemExpr -> Compiler ()

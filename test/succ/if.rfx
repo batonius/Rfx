@@ -1,4 +1,4 @@
-int8 gv = 1;
+int16 gv = 1;
 
 thread a where
   state aa where

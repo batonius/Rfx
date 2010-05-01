@@ -1,0 +1,17 @@
+int8 char = 0;
+int16 short = 0;
+int32 int = 0;
+
+bool fun(int16 n)
+     return n == 0;
+end;
+
+thread t where
+       state s where
+             char = 127;
+             short = 30000;
+             int = 2000000000;
+             fun(char);
+             int = short + char;
+       end;
+end;      
