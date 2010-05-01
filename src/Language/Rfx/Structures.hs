@@ -26,7 +26,8 @@ module Language.Rfx.Structures(Program(..),
                                posChildOf,
                                buildinFuncs,
                                statmentPos,
-                               typeCanBe)
+                               typeCanBe,
+                               isArrayType)
 where
 import Text.ParserCombinators.Parsec(SourcePos)
 import qualified Data.Map as Map
@@ -60,7 +61,8 @@ data (Expression e) => Var e = Var
     , varType :: (EVariableType e)
     , varSourcePos :: SourcePos
     , varArg :: Bool
-    } deriving (Show, Ord)
+    }
+                              deriving (Show, Ord)
 
 data VarType = Int8Type
              | Int16Type
@@ -69,6 +71,11 @@ data VarType = Int8Type
              | StringType
              | TimeType
              | VoidType
+             | ArrayType
+               {
+                 arrayType :: VarType
+                 ,arraySize :: Int
+               }
                deriving (Show, Eq, Ord)
 
 data (Expression e) => Func e = BuildinFunc
@@ -92,7 +99,9 @@ data StateName = StateName String deriving (Show, Eq, Ord)
 data VarName = VarName String
              | LongVarName String String
                deriving (Eq, Ord, Show)
-data VarTypeName = VarTypeName String deriving (Eq, Show, Ord)
+data VarTypeName = VarTypeName String
+                 | ArrayVarTypeName VarTypeName Int
+                   deriving (Eq, Show, Ord)
 data FuncName = FuncName String  deriving (Show, Eq, Ord)
                                         
 -- Expr class
@@ -134,6 +143,7 @@ data SynExpr = NumSynExpr Int
              | BoolSynExpr Bool
              | TimeSynExpr Integer -- ms
              | VoidSynExpr
+             | ArrayAccessSynExpr SourcePos SynExpr SynExpr 
                deriving (Show, Eq, Ord)
 
 instance Expression SynExpr where
@@ -166,6 +176,7 @@ data SemExpr = NumSemExpr Int
              | BoolSemExpr Bool
              | TimeSemExpr Integer -- ms
              | VoidSemExpr
+             | ArrayAccessSemExpr SemExpr SemExpr
              deriving (Show, Eq, Ord)
                               
 instance Expression SemExpr where
@@ -292,7 +303,11 @@ Int8Type `typeCanBe` Int16Type = True
 Int8Type `typeCanBe` Int32Type = True
 Int16Type `typeCanBe` Int32Type = True
 typeCanBe a b = a == b
-                                    
+
+isArrayType :: VarType -> Bool
+isArrayType (ArrayType _ _) = True
+isArrayType _ = False
+              
 posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
 posChildOf _ InGlobal = True
 posChildOf (InFunction f) (InFunction g) = f == g

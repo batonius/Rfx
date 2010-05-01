@@ -24,6 +24,8 @@ data Token = NumberToken Int        -- Number
            | SlashToken             -- /
            | LParToken              -- (
            | RParToken              -- )
+           | LBracketToken          -- [
+           | RBracketToken          -- ]
            | EqualToken             -- ==
            | NEqualToken            -- !=
            | GrToken                -- >
@@ -106,6 +108,8 @@ symbolTokens = [ ("+", PlusToken)
                , ("/", SlashToken)
                , ("(", LParToken)
                , (")", RParToken)
+               , ("[", LBracketToken)
+               , ("]", RBracketToken)
                , (">=", GrEqToken)
                , ("<=", LsEqToken)
                , ("==", EqualToken)

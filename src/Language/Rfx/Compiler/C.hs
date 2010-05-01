@@ -55,9 +55,9 @@ programCompiler program = do
                   | thread <- threads]
   -- States vars
   sequence_ [ do
-              addLine $ "/* State-scope vars from thread" ++ threadName thread ++ "*/"
+              addLine $ "/* State-scope vars from thread " ++ threadName thread ++ "*/"
               sequence_ [do
-                          addLine $ "/*\tVars form state" ++ stateName state ++  "*/"
+                          addLine $ "/*\tVars form state " ++ stateName state ++  "*/"
                           stateVars <- getVarsFromScope $ InState thread state
                           sequence_ [ varDefenitionCompiler var
                                       | var <- stateVars]
@@ -170,8 +170,10 @@ stateCompiler thread state = do
   addLine "case 0:"
   addIndent
   stateVars <- getVarsFromScope $ InState thread state
-  sequence_ [ statmentCompiler (AssignSt var (varInitValue var) (varSourcePos var))
-                  | var <- stateVars]
+  sequence_ [ if varInitValue var == VoidSemExpr
+                 then return ()
+                 else statmentCompiler (AssignSt var (varInitValue var) (varSourcePos var))
+              | var <- stateVars]
   sequence_ [do
               statmentCompiler st
              | st <- stateStatments state]
@@ -280,6 +282,13 @@ exprCompiler (SubSemExpr e) = do
   exprCompiler e
   addString ") "
 
+exprCompiler (ArrayAccessSemExpr e i) = do
+  addString "("
+  exprCompiler e
+  addString ")["
+  exprCompiler i
+  addString "]"  
+            
 exprCompiler (VarSemExpr v) = varCompiler v
 exprCompiler (OpSemExpr op le re _) = do
   if op == BoolXorSemOp
@@ -347,16 +356,24 @@ typeName tp = case tp of
                 Int8Type -> "char"
                 Int16Type -> "short"
                 Int32Type -> "int"
-                _ -> "int"
+                (ArrayType st _) -> typeName st
 
+arrayTypeSizes :: VarType -> String
+arrayTypeSizes (ArrayType st size) = arrayTypeSizes st ++ "[" ++ show size ++ "]"
+arrayTypeSizes _ = ""
+                                   
 varDefenitionCompiler :: Var SemExpr -> Compiler ()
 varDefenitionCompiler var = do
   makeIndent
   typeCompiler (varType var)
   addString " "
   addString $ getVarFullName var
-  addString " = "
-  exprCompiler (varInitValue var)
+  addString $ arrayTypeSizes $ varType var
+  if (varInitValue var /= VoidSemExpr)
+     then do
+       addString " = "
+       exprCompiler (varInitValue var)
+     else return ()
   addString ";\n"
 
 getVarFullName :: Var SemExpr -> String

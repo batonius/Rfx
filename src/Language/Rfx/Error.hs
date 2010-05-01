@@ -92,6 +92,7 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | StateAlreadyExistsSemExc String String
                   -- describe
                   | IntTooBigSemExc Int
+                  | NotArrayAccessSemExpr SynExpr
                     deriving Typeable
 
 instance Exception SemException where
@@ -100,7 +101,7 @@ instance Exception SemException where
 
 fullVarName (VarName name) = name
 fullVarName (LongVarName thName varName) = thName ++ (__ ".") ++ varName
-
+                                           
 instance Show SemException where
     show (NoSuchVarSemExc varName pos) =
         printf (__ "Error: no such variable %s at %s.")

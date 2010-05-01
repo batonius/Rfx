@@ -39,14 +39,17 @@ addVars vars = do
 
 varDefParser :: ProgramPos SynExpr -> Bool -> TokenParser (Var SynExpr)
 varDefParser scope arg = do
-  (IdentifierToken varTypeName) <- identifierParser
+  typeName <- typeNameParser
   varSourcePos <- getPosition
   (IdentifierToken varName) <- identifierParser
-  tokenParser AssignToken
-  varInitValue <- exprParser
-  tokenParser SemicolonToken
+  next <- choice [tokenParser AssignToken, tokenParser SemicolonToken]
+  varInitValue <- if next == SemicolonToken then return VoidSynExpr
+                 else do
+                   viv <- exprParser
+                   tokenParser SemicolonToken
+                   return viv
   return Var{varName
-            ,varType=VarTypeName varTypeName
+            ,varType=typeName
             ,varInitValue
             ,varScope=scope
             ,varSourcePos
@@ -80,7 +83,7 @@ funcDefParser = do
                      ,uFuncArgs = args
                      ,uFuncStatments = statments
                      ,uFuncPos = funcSourcePos}
-  
+
 threadParser :: TokenParser (Thread SynExpr)
 threadParser = do
   tokenParser ThreadToken
@@ -200,7 +203,13 @@ exprParser = do
                 ,try varExprParser
                 ,try subExprParser
                 ,try stringExprParser]
-  return expr
+  pos <- getPosition
+  arrayIndices <- many $ do
+                   tokenParser LBracketToken
+                   ex <- exprParser
+                   tokenParser RBracketToken
+                   return ex
+  return $ foldl (ArrayAccessSynExpr pos) expr arrayIndices
 
 funExprParser :: TokenParser SynExpr
 funExprParser = do
@@ -283,16 +292,26 @@ varNameParser :: TokenParser VarName
 varNameParser = do
   varNameParts <- sepBy1 identifierParser (tokenParser DotToken)
   pos <- getPosition
-  case length varNameParts of
-    1 -> do
-      let (IdentifierToken varId) = head varNameParts
-      return $ VarName varId
-    2 -> do
-      let (IdentifierToken thId) = head varNameParts
-      let (IdentifierToken varId) = varNameParts !! 1
-      return $ LongVarName thId varId
-    _ -> return $ throw $ VarNameTooLongSynExc
-        (concat $ map (\(IdentifierToken th) -> th++".") varNameParts) pos
+  let originalVarName = case length varNameParts of
+                          1 -> let (IdentifierToken varId) = head varNameParts in
+                              VarName varId
+                          2 -> let (IdentifierToken thId) = head varNameParts 
+                                   (IdentifierToken varId) = varNameParts !! 1 in
+                              LongVarName thId varId
+                          _ -> throw $ VarNameTooLongSynExc
+                              (concat $ map (\(IdentifierToken th) -> th++".") varNameParts) pos
+  return $ originalVarName
+  
+typeNameParser :: TokenParser VarTypeName
+typeNameParser = do
+  (IdentifierToken typeName) <- identifierParser
+  let originalTypeName = VarTypeName typeName
+  arraySizes <- many $ do
+                   tokenParser LBracketToken
+                   (NumberToken n) <- numberParser
+                   tokenParser RBracketToken
+                   return n
+  return $ foldl ArrayVarTypeName originalTypeName arraySizes
 
 -- -- Helper funs
 tokenTestParser :: (Token -> Bool) -> TokenParser Token

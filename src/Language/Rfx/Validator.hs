@@ -42,7 +42,9 @@ validateVars pr vars = validateVars' vars [] where
           vVarType = validateType varType varSourcePos
       in if (not.null) $ usedVars vInitVal
            then throw $ VarInVarInitSemExc var
-           else if (not varArg) && (not (typeOfExpr vInitVal `typeCanBe` vVarType) || (vVarType == VoidType))  -- TODO Make exception
+           else if (vVarType /= VoidType) && (typeOfExpr vInitVal /= VoidType)
+                    && (not (typeOfExpr vInitVal `typeCanBe` vVarType))
+          --(not varArg) && (not (typeOfExpr vInitVal `typeCanBe` vVarType) || (vVarType == VoidType))  -- TODO Make exception
                 then throw $ VarInitWrongTypeSemExc var
                 else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
                      in if (not.null)  sameVars
@@ -129,6 +131,12 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' _ _ (BoolSynExpr b) = BoolSemExpr b
       validateExpr' _ _ (StringSynExpr s) = StringSemExpr s
       validateExpr' _ _ (TimeSynExpr t) = TimeSemExpr t
+      validateExpr' pr scope e@(ArrayAccessSynExpr _ expr index) = let expr' = validateExpr pr scope expr
+                                                                       index' = validateExpr pr scope index in
+                                                                   if (isArrayType $ typeOfExpr expr')
+                                                                          && (typeOfExpr index' `typeCanBe` Int32Type)
+                                                                   then ArrayAccessSemExpr expr' index'
+                                                                   else throw $ NotArrayAccessSemExpr e
       validateExpr' pr scope (VarSynExpr varName pos) = VarSemExpr $ varByName pr scope varName pos
       validateExpr' pr scope (FunSynExpr exprFunc args pos) =
           let vArgs = map (validateExpr' pr scope) args
@@ -170,6 +178,8 @@ validateType (VarTypeName typeName) pos = case Map.lookup typeName
                                                ,("ПУСТО", VoidType)]
                                           of Nothing -> throw $ NoSuchTypeSemExc typeName pos
                                              Just vVarType -> vVarType
+validateType (ArrayVarTypeName vt size) pos = ArrayType (validateType vt pos) size
+                                              
 -- ByName functions
 threadByName :: Program SemExpr -> ThreadName -> SourcePos -> Thread SemExpr
 threadByName ~Program{programThreads} (ThreadName thName) pos =
@@ -242,6 +252,8 @@ typeOfExpr (FunSemExpr func _ ) = funcRetType func
 typeOfExpr (SubSemExpr se) = typeOfExpr se
 typeOfExpr (OpSemExpr _ _ _ opRetType) = opRetType
 typeOfExpr VoidSemExpr = VoidType
+typeOfExpr (ArrayAccessSemExpr expr _) = subType
+    where (ArrayType subType _) = typeOfExpr expr
                                                                
 priorityList :: [[SynOper]]
 priorityList = [[AndSynOp
