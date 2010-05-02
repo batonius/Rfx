@@ -139,7 +139,7 @@ parserAssertStatment s stm = ("int8 var = 0;thread th where\nstate st where\n" +
 parserAssertExpr :: String -> SynExpr -> Assertion
 parserAssertExpr s e = ("var = " ++ s ++ ";")
                        `parserAssertStatment`
-                       [AssignSt varNameForTest e zeroPos]
+                       [AssignSt (RValueVar varNameForTest) e zeroPos]
                                          
 parserEmptyTest :: Assertion
 parserEmptyTest = "" `parserAssertStatment` []
@@ -163,7 +163,7 @@ parserMultipleThreadsTest = do
   
 parserAssignStatmentTest :: Assertion
 parserAssignStatmentTest = do
-  "var = 12;" `parserAssertStatment` [AssignSt varNameForTest (NumSynExpr 12) zeroPos]
+  "var = 12;" `parserAssertStatment` [AssignSt (RValueVar varNameForTest) (NumSynExpr 12) zeroPos]
 
 parserExprTest :: Assertion
 parserExprTest = do

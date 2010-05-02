@@ -102,12 +102,18 @@ validateStatment pr scope st@(WaitSt ex n pos) =
        then WaitSt valEx n pos
        else throw $ NeedBoolSemExc st
             
-validateStatment pr scope st@(AssignSt varName expr pos) =
+validateStatment pr scope st@(AssignSt rValue expr pos) =
     let valExpr = validateExpr pr scope expr
         valType = typeOfExpr valExpr
-        var = varByName pr scope varName pos
-    in if (valType `typeCanBe` varType var)
-       then AssignSt var valExpr pos
+        rValue' = validateRValue pr scope pos rValue
+        getRValueType (RValueVar Var{varType}) = varType
+        getRValueType (RValueArrayAccess rValue _) =
+            case getRValueType rValue of
+              (ArrayType varType _) -> varType
+              _ -> throw $ AssignWrongTypeSemExc st
+        rValueType = getRValueType rValue'
+    in if (valType `typeCanBe` rValueType)
+       then AssignSt rValue' valExpr pos
        else throw $ AssignWrongTypeSemExc st
 
 validateStatment pr scope (ReturnSt expr pos) =
@@ -122,6 +128,13 @@ validateStatment pr scope (ReturnSt expr pos) =
             
 validateStatment pr scope (FunSt e pos) = FunSt (validateExpr pr scope e) pos
 
+validateRValue :: Program SemExpr -> ProgramPos SemExpr -> SourcePos  -> RValue SynExpr -> RValue SemExpr
+validateRValue pr scope pos (RValueVar varName) = RValueVar var
+    where var = varByName pr scope varName pos
+validateRValue pr scope pos (RValueArrayAccess rValue expr) = RValueArrayAccess rValue' expr'
+    where rValue' = validateRValue pr scope pos rValue
+          expr' = validateExpr pr scope expr
+                                          
 validateExpr :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
 validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPriority expr
     where
@@ -131,12 +144,12 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' _ _ (BoolSynExpr b) = BoolSemExpr b
       validateExpr' _ _ (StringSynExpr s) = StringSemExpr s
       validateExpr' _ _ (TimeSynExpr t) = TimeSemExpr t
-      validateExpr' pr scope e@(ArrayAccessSynExpr _ expr index) = let expr' = validateExpr pr scope expr
-                                                                       index' = validateExpr pr scope index in
-                                                                   if (isArrayType $ typeOfExpr expr')
-                                                                          && (typeOfExpr index' `typeCanBe` Int32Type)
-                                                                   then ArrayAccessSemExpr expr' index'
-                                                                   else throw $ NotArrayAccessSemExpr e
+      validateExpr' pr scope e@(ArrayAccessSynExpr pos expr index) = let expr' = validateExpr pr scope expr
+                                                                         index' = validateExpr pr scope index in
+                                                                     if (isArrayType $ typeOfExpr expr')
+                                                                            && (typeOfExpr index' `typeCanBe` Int32Type)
+                                                                     then ArrayAccessSemExpr expr' index'
+                                                                     else throw $ NotArrayAccessSemExpr e pos
       validateExpr' pr scope (VarSynExpr varName pos) = VarSemExpr $ varByName pr scope varName pos
       validateExpr' pr scope (FunSynExpr exprFunc args pos) =
           let vArgs = map (validateExpr' pr scope) args

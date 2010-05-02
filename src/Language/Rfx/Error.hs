@@ -90,9 +90,9 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | ReturnPathsSemExc (Func SynExpr)
                   | ThreadAlreadyExistsSemExc String
                   | StateAlreadyExistsSemExc String String
+                  | NotArrayAccessSemExpr SynExpr SourcePos
                   -- describe
                   | IntTooBigSemExc Int
-                  | NotArrayAccessSemExpr SynExpr
                     deriving Typeable
 
 instance Exception SemException where
@@ -135,7 +135,7 @@ instance Show SemException where
                (funcName func) (show pos)
     show (AssignWrongTypeSemExc (AssignSt varName _ pos)) =
         printf (__ "Error: wrong type of expression in assigment to %s at %s.")
-               (fullVarName varName) (show pos)
+               (show varName) (show pos)
     show (NextNotInStateSemExc pos) =
         printf (__ "Error: Next statment outside of state clause at %s.")
                (show pos)
@@ -154,6 +154,9 @@ instance Show SemException where
     show (NeedBoolSemExc st) =
         printf (__ "Error: statment argument type must be boolean at %s.")
                (show $ statmentPos st)
+    show (NotArrayAccessSemExpr _ pos) =
+        printf (__ "Error: indexing not-array expression at %s.")
+               (show pos)
     show _ = (__ "Lolwut?")
                     
 instance Lined SemException where
@@ -172,4 +175,5 @@ instance Lined SemException where
     getErrorLine (ReturnWrongTypeSemExc pos)                    = sourceLine pos
     getErrorLine (ReturnPathsSemExc UserFunc{uFuncPos})         = sourceLine uFuncPos
     getErrorLine (NeedBoolSemExc st)                            = sourceLine $ statmentPos st
+    getErrorLine (NotArrayAccessSemExpr _ pos)                  = sourceLine pos
     getErrorLine _                                              = 0

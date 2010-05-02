@@ -17,6 +17,7 @@ module Language.Rfx.Structures(Program(..),
                                FuncName(..),
                                ThreadName(..),
                                StateName(..),
+                               RValue(..),
                                funcName,
                                buildinFunc,
                                funcRetType,
@@ -78,6 +79,10 @@ data VarType = Int8Type
                }
                deriving (Show, Eq, Ord)
 
+data (Expression e) => RValue e = RValueVar (EVariable e)
+                               | RValueArrayAccess (RValue e) e
+                               deriving (Show, Eq, Ord)
+                        
 data (Expression e) => Func e = BuildinFunc
     {
       biFuncName     ::String
@@ -103,7 +108,7 @@ data VarTypeName = VarTypeName String
                  | ArrayVarTypeName VarTypeName Int
                    deriving (Eq, Show, Ord)
 data FuncName = FuncName String  deriving (Show, Eq, Ord)
-                                        
+              
 -- Expr class
 class (Eq e
       ,Eq (EVariable e)
@@ -263,7 +268,7 @@ data SemOper = NumPlusSemOp
                deriving (Show, Eq, Ord)
 
 -- StatEments, lol
-data (Expression e) => Statment e = AssignSt (EVariable e) e SourcePos
+data (Expression e) => Statment e = AssignSt (RValue e) e SourcePos
                                  | IfSt e [Statment e] SourcePos
                                  | IfElseSt e [Statment e] [Statment e] SourcePos
                                  | WhileSt e [Statment e] SourcePos 

@@ -43,9 +43,6 @@ programCompiler program = do
   addLine "/* Global vars */"
   globalVars <- getVarsFromScope InGlobal
   sequence_ [varDefenitionCompiler var | var <- globalVars]
-  -- User functions
-  addLine "/* User functions */"
-  sequence_ [funcDefenitionCompiler func | func <- funcs]
   -- Thread vars
   addLine "/* Thread-scope vars */"
   sequence_ [do
@@ -83,6 +80,9 @@ programCompiler program = do
   if (not.null) threads
     then addLine $ "int __rfx_cur_thread = " ++ (getThreadName $ head threads) ++ ";"
     else return ()
+  -- User functions
+  addLine "/* User functions */"
+  sequence_ [funcDefenitionCompiler func | func <- funcs]
   --States funs
   addLine "/* States functions */"
   sequence_ [do
@@ -172,7 +172,7 @@ stateCompiler thread state = do
   stateVars <- getVarsFromScope $ InState thread state
   sequence_ [ if varInitValue var == VoidSemExpr
                  then return ()
-                 else statmentCompiler (AssignSt var (varInitValue var) (varSourcePos var))
+                 else statmentCompiler (AssignSt (RValueVar var) (varInitValue var) (varSourcePos var))
               | var <- stateVars]
   sequence_ [do
               statmentCompiler st
@@ -193,9 +193,9 @@ statmentsCompiler sts = do
   addLine "}"
 
 statmentCompiler :: Statment SemExpr -> Compiler ()
-statmentCompiler (AssignSt var expr _) = do
+statmentCompiler (AssignSt rValue expr _) = do
   makeIndent
-  varCompiler var
+  rValueCompiler rValue
   addString "= "
   exprCompiler expr
   addString $ ";\n"
@@ -267,6 +267,14 @@ statmentCompiler (FunSt fun _) = do
   addString ";\n"
 
 --statmentCompiler _ = error "Not implemented yet"
+rValueCompiler :: RValue SemExpr -> Compiler ()
+rValueCompiler (RValueVar var) = varCompiler var
+rValueCompiler (RValueArrayAccess rValue expr) = do
+  rValueCompiler rValue
+  addString "["
+  exprCompiler expr
+  addString "]"
+
 
 exprCompiler :: SemExpr -> Compiler ()
 exprCompiler (NumSemExpr n) = addString $ (show n) ++ " "

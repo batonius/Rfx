@@ -174,10 +174,16 @@ waitParser = do
 assignParser :: TokenParser (Statment SynExpr)
 assignParser = do
   varName <- varNameParser
+  arrayIndices <- many $ do
+                   tokenParser LBracketToken
+                   ex <- exprParser
+                   tokenParser RBracketToken
+                   return ex
+  let rValue = foldl RValueArrayAccess (RValueVar varName) arrayIndices
   pos <- getPosition
   tokenParser AssignToken
   expr <- exprParser
-  return $ AssignSt varName expr pos
+  return $ AssignSt rValue expr pos
 
 funParser :: TokenParser (Statment SynExpr)
 funParser = do
