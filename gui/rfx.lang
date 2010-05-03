@@ -42,7 +42,10 @@
       <keyword>thread</keyword>
       <keyword>state</keyword>
       <keyword>where</keyword>
-      </context>
+      <keyword>поток</keyword>
+      <keyword>состояние</keyword>
+      <keyword>где</keyword>
+    </context>
 
     <context id="loop-flow-and-exceptions-keywords" style-ref="keyword">
       <keyword>while</keyword>
@@ -55,17 +58,38 @@
       <keyword>next</keyword>
       <keyword>wait</keyword>
       <keyword>return</keyword>
+      <keyword>пока</keyword>
+      <keyword>делать</keyword>
+      <keyword>если</keyword>
+      <keyword>тогда</keyword>
+      <keyword>конец</keyword>
+      <keyword>иначе</keyword>
+      <keyword>прервать</keyword>
+      <keyword>дальше</keyword>
+      <keyword>ждать</keyword>
+      <keyword>вернуть</keyword>
     </context>
 
     <context id="builtin-types" style-ref="type">
       <keyword>bool</keyword>
       <keyword>int8</keyword>
+      <keyword>int16</keyword>
+      <keyword>int32</keyword>
+      <keyword>string</keyword>
       <keyword>time</keyword>
+      <keyword>лог</keyword>
+      <keyword>цел8</keyword>
+      <keyword>цел16</keyword>
+      <keyword>цел32</keyword>
+      <keyword>строка</keyword>
+      <keyword>время</keyword>
     </context>
 
     <context id="builtin-values" style-ref="decimal">
-       <keyword>false</keyword>
+      <keyword>false</keyword>
       <keyword>true</keyword>
+      <keyword>ложь</keyword>
+      <keyword>истина</keyword>
     </context>
 
     <context id="number" style-ref="decimal">

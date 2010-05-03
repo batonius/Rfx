@@ -91,8 +91,7 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | ThreadAlreadyExistsSemExc String
                   | StateAlreadyExistsSemExc String String
                   | NotArrayAccessSemExpr SynExpr SourcePos
-                  -- describe
-                  | IntTooBigSemExc Int
+                  | IntTooBigSemExc Integer SourcePos
                     deriving Typeable
 
 instance Exception SemException where
@@ -157,6 +156,9 @@ instance Show SemException where
     show (NotArrayAccessSemExpr _ pos) =
         printf (__ "Error: indexing not-array expression at %s.")
                (show pos)
+    show (IntTooBigSemExc _ pos) =
+        printf (__ "Error: integer constant too big at %s.")
+               (show pos)
     show _ = (__ "Lolwut?")
                     
 instance Lined SemException where
@@ -176,4 +178,5 @@ instance Lined SemException where
     getErrorLine (ReturnPathsSemExc UserFunc{uFuncPos})         = sourceLine uFuncPos
     getErrorLine (NeedBoolSemExc st)                            = sourceLine $ statmentPos st
     getErrorLine (NotArrayAccessSemExpr _ pos)                  = sourceLine pos
+    getErrorLine (IntTooBigSemExc _ pos)                        = sourceLine pos
     getErrorLine _                                              = 0

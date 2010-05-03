@@ -6,7 +6,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Language.Rfx.Structures
 
-data CompilerTarget = PIC | ARM | ANSI deriving (Eq, Show)
+data CompilerTarget = PIC | AVR8 | AVR16 | AVR32 | ARM | ANSI deriving (Eq, Show)
 data CompilerLanguage = C | Dot | ST | Python deriving (Eq, Show)
 data CompilerOptions = CompilerOptions
                      {

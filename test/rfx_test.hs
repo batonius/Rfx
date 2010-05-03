@@ -16,7 +16,6 @@ import Language.Rfx.Tokens
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
 import Language.Rfx.Structures
-import Language.Rfx.Util
 
 zeroPos = newPos "" 0 0 
     
@@ -69,10 +68,10 @@ lexerAssert s t = (map value $ lexString s) @?= t
 lexerEmptyTest :: Assertion
 lexerEmptyTest = "" `lexerAssert` []
 
-lexerPosNumProp :: Int -> Property
+lexerPosNumProp :: Integer -> Property
 lexerPosNumProp n = n>=0 ==> (map value $ lexString (show n)) == [NumberToken n]
 
-lexerNegNumProp :: Int -> Property
+lexerNegNumProp :: Integer -> Property
 lexerNegNumProp n = n<0 ==> (map value $ lexString (show n)) == [MinusToken, NumberToken (abs n)]
 
 lexerKeywordsTest :: Assertion
@@ -121,7 +120,7 @@ parserAssert s p = (parseProgram $ lexString s) @?= p
 
 varForTest :: Var SynExpr
 varForTest = Var{varName="var"
-                ,varInitValue=(NumSynExpr 0)
+                ,varInitValue=(NumSynExpr 0 zeroPos)
                 ,varScope=InGlobal
                 ,varType=VarTypeName "int8"
                 ,varSourcePos=zeroPos
@@ -163,15 +162,15 @@ parserMultipleThreadsTest = do
   
 parserAssignStatmentTest :: Assertion
 parserAssignStatmentTest = do
-  "var = 12;" `parserAssertStatment` [AssignSt (RValueVar varNameForTest) (NumSynExpr 12) zeroPos]
+  "var = 12;" `parserAssertStatment` [AssignSt (RValueVar varNameForTest) (NumSynExpr 12 zeroPos) zeroPos]
 
 parserExprTest :: Assertion
 parserExprTest = do
-  "10" `parserAssertExpr` (NumSynExpr 10)
-  "10+3"  `parserAssertExpr` (OpSynExpr PlusSynOp (NumSynExpr 10) (NumSynExpr 3) zeroPos)
+  "10" `parserAssertExpr` (NumSynExpr 10 zeroPos)
+  "10+3"  `parserAssertExpr` (OpSynExpr PlusSynOp (NumSynExpr 10 zeroPos) (NumSynExpr 3 zeroPos) zeroPos)
   "var" `parserAssertExpr` (VarSynExpr varNameForTest zeroPos)
   "(1*1)-var" `parserAssertExpr` (OpSynExpr MinusSynOp
-                                  (SubSynExpr $ OpSynExpr MulSynOp (NumSynExpr 1) (NumSynExpr 1) zeroPos)
+                                  (SubSynExpr $ OpSynExpr MulSynOp (NumSynExpr 1 zeroPos) (NumSynExpr 1 zeroPos) zeroPos)
                                   (VarSynExpr varNameForTest zeroPos) zeroPos)
 
 -- --
@@ -180,7 +179,7 @@ compileFileSuccessAssertion file = do
   curDir <- getCurrentDirectory
   ec <- system (curDir++"/rfx " ++ file ++ " > out.c")
   ec @?= ExitSuccess
-  ec2 <- system ("gcc -fsyntax-only -std=c89 -c out.c")
+  ec2 <- system ("gcc -I./include -fsyntax-only -std=c89 -c out.c")
   ec2 @?= ExitSuccess
       
 compileFileFailAssertion :: FilePath -> Assertion

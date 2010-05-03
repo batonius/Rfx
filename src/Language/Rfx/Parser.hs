@@ -228,8 +228,9 @@ funExprParser = do
 
 numExprParser :: TokenParser SynExpr
 numExprParser = do
+  pos <- getPosition
   (NumberToken n) <- numberParser
-  return $ NumSynExpr n
+  return $ NumSynExpr n pos
 
 stringExprParser :: TokenParser SynExpr
 stringExprParser = do

@@ -10,7 +10,7 @@ thread t where
        state s where
              char = 127;
              short = 30000;
-             int = 2000000000;
+             int = 2100000000;
              fun(char);
              int = short + char;
        end;

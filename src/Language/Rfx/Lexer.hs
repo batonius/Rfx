@@ -17,7 +17,7 @@ taggedParser :: Parser a -> Parser (Tagged a)
 taggedParser parser = liftM2 Tagged getPosition parser
 
 whiteSpaceCharLexer :: Parser Char
-whiteSpaceCharLexer = oneOf " \v\f\t\n" <?> "SPACE"
+whiteSpaceCharLexer = oneOf " \v\f\t\n\r" <?> "SPACE"
 
 whiteSpaceLexer :: Parser ()
 whiteSpaceLexer = skipMany (whiteSpaceCharLexer <?> "")
@@ -26,7 +26,7 @@ lineCommentLexer :: Parser (Tagged Token)
 lineCommentLexer = taggedParser $ do
   whiteSpaceLexer
   symbolLexer "//"
-  manyTill anyChar $ try (char '\n')
+  manyTill anyChar $ try ((char '\n') <|> (char '\r'))
   return CommentToken
 
 multiLineCommentLexer :: Parser (Tagged Token)

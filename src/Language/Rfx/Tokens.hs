@@ -15,7 +15,7 @@ instance Show a => Show (Tagged a) where
 instance Eq a => Eq (Tagged a) where
     (Tagged _ x) == (Tagged _ y) = x == y
 
-data Token = NumberToken Int        -- Number
+data Token = NumberToken Integer        -- Number
            | StringToken String     -- String
            | TimeToken Integer      -- Time
            | PlusToken              -- +
@@ -90,8 +90,8 @@ keywordTokens =
     , ("ГДЕ", WhereToken)
     , ("ТОГДА", ThenToken)
     , ("ПОКА", WhileToken)
-    , ("ДЕЛАЙ", DoToken)
-    , ("ВЕРНИ", ReturnToken)
+    , ("ДЕЛАТЬ", DoToken)
+    , ("ВЕРНУТЬ", ReturnToken)
     , ("ПРЕРВАТЬ", BreakToken)
     , ("ДАЛЬШЕ", NextToken)
     , ("ИСТИНА", TrueToken)
@@ -99,7 +99,8 @@ keywordTokens =
     , ("И", AndToken)
     , ("ИЛИ", OrToken)
     , ("ИИЛИ", XorToken)
-    , ("НЕ", NotToken)]
+    , ("НЕ", NotToken)
+    , ("ЖДАТЬ", WaitToken)]
 
 symbolTokens :: [(String, Token)]
 symbolTokens = [ ("+", PlusToken)

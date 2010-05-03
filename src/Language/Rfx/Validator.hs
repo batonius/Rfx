@@ -4,6 +4,7 @@ where
 import Text.ParserCombinators.Parsec
 import Language.Rfx.Error
 import Language.Rfx.Structures
+import Data.Char(toUpper, toLower)
 import qualified Data.Map as Map
 import Control.Exception hiding (try)
 
@@ -98,17 +99,18 @@ validateStatment pr scope st@(WhileSt ex sts pos) =
 
 validateStatment pr scope st@(WaitSt ex n pos) =
     let valEx = validateExpr pr scope ex
-    in if (typeOfExpr valEx == BoolType)
-       then WaitSt valEx n pos
-       else throw $ NeedBoolSemExc st
+    in case typeOfExpr valEx of
+         BoolType -> WaitSt valEx n pos
+         TimeType -> WaitSt valEx n pos
+         otherwise -> throw $ NeedBoolSemExc st
             
 validateStatment pr scope st@(AssignSt rValue expr pos) =
     let valExpr = validateExpr pr scope expr
         valType = typeOfExpr valExpr
         rValue' = validateRValue pr scope pos rValue
         getRValueType (RValueVar Var{varType}) = varType
-        getRValueType (RValueArrayAccess rValue _) =
-            case getRValueType rValue of
+        getRValueType (RValueArrayAccess rv _) =
+            case getRValueType rv of
               (ArrayType varType _) -> varType
               _ -> throw $ AssignWrongTypeSemExc st
         rValueType = getRValueType rValue'
@@ -140,7 +142,9 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
     where
       validateExpr' :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
       validateExpr' _ _ VoidSynExpr = VoidSemExpr
-      validateExpr' _ _ (NumSynExpr n) = NumSemExpr n
+      validateExpr' _ _ (NumSynExpr n pos) = if n>(2^31) || n<(-(2^31))
+                                             then throw $ IntTooBigSemExc n pos
+                                             else NumSemExpr n 
       validateExpr' _ _ (BoolSynExpr b) = BoolSemExpr b
       validateExpr' _ _ (StringSynExpr s) = StringSemExpr s
       validateExpr' _ _ (TimeSynExpr t) = TimeSemExpr t
@@ -154,7 +158,9 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' pr scope (FunSynExpr exprFunc args pos) =
           let vArgs = map (validateExpr' pr scope) args
               func = funcByName pr exprFunc pos
-          in if and $ zipWith typeCanBe (map typeOfExpr vArgs) (funcArgsTypes func)
+              argTypes = funcArgsTypes func
+          in if (length argTypes == length vArgs)
+                 && (and $ zipWith typeCanBe (map typeOfExpr vArgs) argTypes)
              then FunSemExpr func vArgs
              else throw $ FuncCallWrongTypeSemExc func pos
       validateExpr' pr scope (SubSynExpr e) = SubSemExpr $ validateExpr' pr scope e
@@ -175,16 +181,18 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
           in OpSemExpr semOp vlExpr vrExpr opRetType
 
 validateType :: VarTypeName -> SourcePos -> VarType
-validateType (VarTypeName typeName) pos = case Map.lookup typeName
+validateType (VarTypeName typeName) pos = case Map.lookup (map toUpper typeName)
                                              $ Map.fromList
-                                             $ [("int8", Int8Type)
-                                               ,("int16", Int16Type)
-                                               ,("int32", Int32Type)
-                                               ,("bool", BoolType)
-                                               ,("string", StringType)
-                                               ,("time", TimeType)
-                                               ,("void", VoidType)
+                                             $ [("INT8", Int8Type)
+                                               ,("INT16", Int16Type)
+                                               ,("INT32", Int32Type)
+                                               ,("BOOL", BoolType)
+                                               ,("STRING", StringType)
+                                               ,("TIME", TimeType)
+                                               ,("VOID", VoidType)
                                                ,("ЦЕЛ8", Int8Type)
+                                               ,("ЦЕЛ16", Int16Type)
+                                               ,("ЦЕЛ32", Int32Type)
                                                ,("ЛОГ", BoolType)
                                                ,("СТРОКА", StringType)
                                                ,("ВРЕМЯ", TimeType)
@@ -252,22 +260,6 @@ transScope pr (InState threadName stateName) pos =
 scopeVars :: (Expression a) => ProgramPos a -> [Var a] -> [Var a]
 scopeVars scope = filter (\Var{varScope} -> scope `posChildOf` varScope)
 
-typeOfExpr :: SemExpr -> VarType
-typeOfExpr (NumSemExpr n) | n<2^7 && n>(-2)^7 = Int8Type
-                          | n<2^15 && n>(-2)^15 = Int16Type
-                          | n<2^31 && n>(-2)^31 = Int32Type
-                          | otherwise = throw $ IntTooBigSemExc n
-typeOfExpr (BoolSemExpr _) = BoolType
-typeOfExpr (TimeSemExpr _) = TimeType
-typeOfExpr (StringSemExpr _) = StringType
-typeOfExpr (VarSemExpr Var{varType}) = varType
-typeOfExpr (FunSemExpr func _ ) = funcRetType func
-typeOfExpr (SubSemExpr se) = typeOfExpr se
-typeOfExpr (OpSemExpr _ _ _ opRetType) = opRetType
-typeOfExpr VoidSemExpr = VoidType
-typeOfExpr (ArrayAccessSemExpr expr _) = subType
-    where (ArrayType subType _) = typeOfExpr expr
-                                                               
 priorityList :: [[SynOper]]
 priorityList = [[AndSynOp
                 ,OrSynOp

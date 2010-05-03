@@ -10,20 +10,19 @@ programCompiler program = do
   let threads = programThreads program
   let funcs = filter (not.buildinFunc) $ programFuncs program
   let threadsLen = length threads
-  addLine "/*Rfx was here, lol*/"
-  addLine "#define XOR(x,y) ((x) ? !(y) : (y))"
-  addLine "#define BOOL int"
-  addLine "#define TRUE 1"
-  addLine "#define FALSE 0"
+  addLine $ "#include \"rfx.h\""
   addLine $ "#define __RFX_THREAD_COUNT " ++ (show $ threadsLen)
   addLine $ "enum __rfx_threads {"
   addIndent
   zeroIterator "threadN"
   sequence_ [do
               i <- nextIterator "threadN"
+              if not isFirst
+                then addString ","
+                else return ()
               addLine $ (getThreadName thread) ++ " = "
-                          ++ (show i) ++ ","
-             | thread <- threads]
+                          ++ (show i)
+             | (thread,isFirst) <- zip threads (True:repeat False)]
   subIndent
   addLine $ "};"
   sequence_ [do
@@ -33,9 +32,12 @@ programCompiler program = do
               addIndent
               sequence_ [do
                           i <- nextIterator "stateN"
+                          if not isFirst
+                             then addString ","
+                             else return ()
                           addLine $ getStateName thread state
-                                      ++ " = " ++ (show i) ++ ","
-                         | state <- threadStates thread]
+                                      ++ " = " ++ (show i)
+                         | (state, isFirst) <- zip (threadStates thread) (True:repeat False)]
               subIndent
               addLine $ "};"
              | thread <- threads]
@@ -73,8 +75,17 @@ programCompiler program = do
               let statesCount = length $ threadStates thread;
               addLine $ "int " ++ (getThreadStateArrayName thread)
                      ++ "[" ++ (show statesCount) ++ "] = {"
-              sequence_ [ addString "0, " | _ <- [1..statesCount]]
+              sequence_ [do
+                          if not isFirst
+                             then addString ","
+                             else return ()
+                          addString "0"
+                         | (_, isFirst) <- zip [1..statesCount] (True:repeat False)]
               addLine "};"
+              | thread <- threads]
+  -- Timers vars
+  addLine "/* States timer array */"
+  sequence_ [ addLine $ "int " ++ getThreadTimerName thread ++ " = 0;"
               | thread <- threads]
   --
   if (not.null) threads
@@ -91,6 +102,20 @@ programCompiler program = do
                           stateCompiler thread state
                           | state <- threadStates thread]
              | thread <- threads]
+  --Rfx timer
+  addLine "/*Rfx was here, lol*/"
+  addLine "void __rfx_do_timer(int ms)"
+  addLine "{"
+  addIndent
+  sequence_ [do
+              let timerName = getThreadTimerName thread
+              addLine $ "if (" ++ timerName ++ ">0)" 
+              withIndent $ addLine $ timerName ++ " -= ms;"
+              addLine $ "else if (" ++ timerName ++ "<0)"
+              withIndent $ addLine $ timerName ++ " = 0;"
+              | thread <- threads]
+  subIndent
+  addLine "}"
   --Main rfx fun
   addLine "/* Scheduler */"
   addLine "void __rfx_next()"
@@ -107,13 +132,13 @@ programCompiler program = do
   addLine "{"
   addIndent
   sequence_ [do
-              addLine $ (getThreadName thread ) ++ ":"
+              addLine $ "case " ++ (getThreadName thread ) ++ ":"
               addIndent
               addLine "switch (__rfx_states[__rfx_cur_thread])"
               addLine "{"
               addIndent
               sequence_ [do
-                          addLine $ (getStateName thread state) ++ ":"
+                          addLine $ "case " ++ (getStateName thread state) ++ ":"
                           addIndent
                           addLine $ (getStateName thread state) ++ "_fun();"
                           addLine "break;"
@@ -222,24 +247,44 @@ statmentCompiler (WhileSt expr sts _) = do
 statmentCompiler (WaitSt expr n _) = do
   thread <- getCurrentThread
   state <- getCurrentState
+  let timerName = getThreadTimerName thread
+  let arrayName = getThreadStateArrayName thread ++ "["
+                  ++ getStateName thread state ++ "]"
   subIndent
   addLine $ "case " ++ show n ++ ":"
   addIndent
-  makeIndent
-  addString $ "if ("
-  exprCompiler expr
-  addString ")\n"
-  withIndent $
-             addLine $ getThreadStateArrayName thread ++ "["
-                         ++ getStateName thread state ++ "] = 0;"
-  addLine "else"
-  addLine "{"
-  withIndent $ do
-    addLine $ getThreadStateArrayName thread ++ "["
-                ++ getStateName thread state ++ "] = "
-                ++ show n ++ ";"
-    addLine $ "return;"
-  addLine "}"
+  if typeOfExpr expr == BoolType
+    then do
+      makeIndent
+      addString $ "if ("
+      exprCompiler expr
+      addString ")\n"
+      withIndent $
+                 addLine $ arrayName ++ " = 0;"
+      addLine "else"
+      addLine "{"
+      withIndent $ do
+           addLine $ arrayName ++ " = "
+                       ++ show n ++ ";"
+           addLine $ "return;"
+      addLine "}"
+    else do
+      addLine $ "if (" ++ arrayName ++ "==0)"
+      addLine "{"
+      withIndent $ do
+           makeIndent
+           addString $ timerName ++ " = "
+           exprCompiler expr
+           addString ";\n"
+           addLine $ arrayName ++ " = "
+                       ++ show n ++ ";"
+           addLine "return;"
+      addLine "}"
+      addLine $ "else if (" ++ timerName ++ "==0)"
+      withIndent $
+                 addLine $ arrayName ++ " = 0;"
+      addLine "else"
+      withIndent $ addLine $ "return;"
 
 statmentCompiler (NextSt ThreadState{stateName} _) = do
   state <- getState stateName
@@ -321,6 +366,8 @@ exprCompiler (OpSemExpr op le re _) = do
                     NumDivSemOp    -> "/ "
                     BoolAndSemOp   -> "&& "
                     BoolOrSemOp    -> "|| "
+                    BoolEqlSemOp   -> "== "
+                    BoolNEqlSemOp  -> "!= "
                     TimePlusSemOp  -> "+ "
                     TimeMinusSemOp -> "- "
                     TimeEqlSemOp   -> "== "
@@ -335,7 +382,7 @@ exprCompiler (OpSemExpr op le re _) = do
 exprCompiler (FunSemExpr func args) = do
   addString (case func of
                uf@UserFunc{} -> getFuncName uf
-               BuildinFunc{biFuncName} -> biFuncName)
+               BuildinFunc{biFuncTargetName} -> biFuncTargetName)
   addString "("
   let addArg [] = addString ")"
       addArg [a] = do
@@ -356,6 +403,7 @@ varCompiler v = do
 typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ typeName tp
 
+typeName :: VarType -> String
 typeName tp = case tp of
                 StringType -> "char*"
                 TimeType -> "long int"
@@ -404,4 +452,8 @@ getFuncName :: Func SemExpr -> String
 getFuncName UserFunc{uFuncName} = "__rfx_func__" ++ (tlString $ uFuncName)
 getFuncName _ = error "Get buildin function name, wtf?"
 
+getThreadStateArrayName :: Thread SemExpr -> String
 getThreadStateArrayName th = getThreadName th ++ "_state"
+
+getThreadTimerName :: Thread SemExpr -> String
+getThreadTimerName th = getThreadName th ++ "_timer"

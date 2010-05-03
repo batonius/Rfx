@@ -28,6 +28,7 @@ module Language.Rfx.Structures(Program(..),
                                buildinFuncs,
                                statmentPos,
                                typeCanBe,
+                               typeOfExpr,
                                isArrayType)
 where
 import Text.ParserCombinators.Parsec(SourcePos)
@@ -75,7 +76,7 @@ data VarType = Int8Type
              | ArrayType
                {
                  arrayType :: VarType
-                 ,arraySize :: Int
+                 ,arraySize :: Integer
                }
                deriving (Show, Eq, Ord)
 
@@ -85,9 +86,10 @@ data (Expression e) => RValue e = RValueVar (EVariable e)
                         
 data (Expression e) => Func e = BuildinFunc
     {
-      biFuncName     ::String
-    , biFuncArgs     ::[VarType]
-    , biFuncRetType  ::(EVariableType e)
+      biFuncName       ::String
+    , biFuncTargetName :: String
+    , biFuncArgs       ::[VarType]
+    , biFuncRetType    ::(EVariableType e)
     }
                              | UserFunc
     {
@@ -105,7 +107,7 @@ data VarName = VarName String
              | LongVarName String String
                deriving (Eq, Ord, Show)
 data VarTypeName = VarTypeName String
-                 | ArrayVarTypeName VarTypeName Int
+                 | ArrayVarTypeName VarTypeName Integer
                    deriving (Eq, Show, Ord)
 data FuncName = FuncName String  deriving (Show, Eq, Ord)
               
@@ -139,7 +141,7 @@ class (Eq e
     voidExpr :: e -> Bool
 
 -- Expr instances                
-data SynExpr = NumSynExpr Int
+data SynExpr = NumSynExpr Integer SourcePos
              | OpSynExpr SynOper SynExpr SynExpr SourcePos 
              | VarSynExpr (EVariable SynExpr) SourcePos
              | SubSynExpr SynExpr
@@ -172,7 +174,7 @@ instance Expression SynExpr where
     voidExpr VoidSynExpr = True
     voidExpr _ = False
 
-data SemExpr = NumSemExpr Int
+data SemExpr = NumSemExpr Integer
              | OpSemExpr SemOper SemExpr SemExpr VarType
              | VarSemExpr (EVariable SemExpr)
              | SubSemExpr SemExpr
@@ -257,6 +259,8 @@ data SemOper = NumPlusSemOp
              | BoolAndSemOp
              | BoolOrSemOp
              | BoolXorSemOp
+             | BoolEqlSemOp
+             | BoolNEqlSemOp
              | TimePlusSemOp
              | TimeMinusSemOp
              | TimeEqlSemOp
@@ -291,12 +295,15 @@ statmentPos (FunSt _ pos) = pos
 statmentPos (ReturnSt _ pos) = pos
 statmentPos (WaitSt _ _ pos) = pos
                                             
+funcName :: (Expression e) => Func e -> String
 funcName BuildinFunc{biFuncName} = biFuncName
 funcName UserFunc{uFuncName} = uFuncName
 
+buildinFunc :: (Expression e) => Func e -> Bool                        
 buildinFunc BuildinFunc{} = True
 buildinFunc _ = False
 
+funcRetType :: (Expression e) => Func e -> (EVariableType e)
 funcRetType BuildinFunc{biFuncRetType} = biFuncRetType
 funcRetType UserFunc{uFuncRetType} = uFuncRetType
 
@@ -309,6 +316,21 @@ Int8Type `typeCanBe` Int32Type = True
 Int16Type `typeCanBe` Int32Type = True
 typeCanBe a b = a == b
 
+typeOfExpr :: SemExpr -> VarType
+typeOfExpr (NumSemExpr n) | n<2^7 && n>(-2)^7 = Int8Type
+                          | n<2^15 && n>(-2)^15 = Int16Type
+                          | otherwise = Int32Type -- assume const size checked
+typeOfExpr (BoolSemExpr _) = BoolType
+typeOfExpr (TimeSemExpr _) = TimeType
+typeOfExpr (StringSemExpr _) = StringType
+typeOfExpr (VarSemExpr Var{varType}) = varType
+typeOfExpr (FunSemExpr func _ ) = funcRetType func
+typeOfExpr (SubSemExpr se) = typeOfExpr se
+typeOfExpr (OpSemExpr _ _ _ opRetType) = opRetType
+typeOfExpr VoidSemExpr = VoidType
+typeOfExpr (ArrayAccessSemExpr expr _) = subType
+    where (ArrayType subType _) = typeOfExpr expr
+                
 isArrayType :: VarType -> Bool
 isArrayType (ArrayType _ _) = True
 isArrayType _ = False
@@ -333,8 +355,8 @@ opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp, TimePlusSemOp])
                        ,(MinusSynOp, [NumMinusSemOp, TimeMinusSemOp])
                        ,(MulSynOp, [NumMulSemOp])
                        ,(DivSynOp, [NumDivSemOp])
-                       ,(EqlSynOp, [NumEqlSemOp, TimeEqlSemOp])
-                       ,(NEqlSynOp, [NumNEqlSemOp, TimeNEqlSemOp])
+                       ,(EqlSynOp, [NumEqlSemOp, TimeEqlSemOp, BoolEqlSemOp])
+                       ,(NEqlSynOp, [NumNEqlSemOp, TimeNEqlSemOp, BoolNEqlSemOp])
                        ,(GrSynOp, [NumGrSemOp, TimeGrSemOp])
                        ,(LsSynOp, [NumLsSemOp, TimeLsSemOp])
                        ,(GrEqSynOp, [NumGrEqlSemOp, TimeGrEqlSemOp])
@@ -359,6 +381,8 @@ semOpTypes = concat [[(NumPlusSemOp, (numType, numType, numType))
                 ,(BoolAndSemOp, (BoolType, BoolType, BoolType))
                 ,(BoolOrSemOp, (BoolType, BoolType, BoolType))
                 ,(BoolXorSemOp, (BoolType, BoolType, BoolType))
+                ,(BoolEqlSemOp, (BoolType, BoolType, BoolType))
+                ,(BoolNEqlSemOp, (BoolType, BoolType, BoolType))
                 ,(TimePlusSemOp, (TimeType, TimeType, TimeType))
                 ,(TimeMinusSemOp, (TimeType, TimeType, TimeType))
                 ,(TimeEqlSemOp, (TimeType, TimeType, BoolType))
@@ -369,6 +393,35 @@ semOpTypes = concat [[(NumPlusSemOp, (numType, numType, numType))
                 ,(TimeNEqlSemOp, (TimeType, TimeType, TimeType))]
 
 buildinFuncs :: [Func SemExpr]
-buildinFuncs = [BuildinFunc{biFuncName="neg"
-                           ,biFuncArgs=[Int8Type]
-                           ,biFuncRetType=Int8Type}]
+buildinFuncs = [BuildinFunc{biFuncName="getPortByte"
+                           ,biFuncTargetName="getPortByte"
+                           ,biFuncArgs=[Int32Type]
+                           ,biFuncRetType=Int8Type}
+               ,BuildinFunc{biFuncName="setPortByte"
+                           ,biFuncTargetName="setPortByte"
+                           ,biFuncArgs=[Int32Type, Int8Type]
+                           ,biFuncRetType=VoidType}
+               ,BuildinFunc{biFuncName="getPortBit"
+                           ,biFuncTargetName="getPortBit"
+                           ,biFuncArgs=[Int32Type, Int32Type]
+                           ,biFuncRetType=BoolType}
+               ,BuildinFunc{biFuncName="setPortBit"
+                           ,biFuncTargetName="setPortBit"
+                           ,biFuncArgs=[Int32Type, Int32Type, BoolType]
+                           ,biFuncRetType=VoidType}
+               ,BuildinFunc{biFuncName="взятьПортБайт"
+                           ,biFuncTargetName="getPortByte"
+                           ,biFuncArgs=[Int32Type]
+                           ,biFuncRetType=Int8Type}
+               ,BuildinFunc{biFuncName="устПортБайт"
+                           ,biFuncTargetName="setPortByte"
+                           ,biFuncArgs=[Int32Type, Int8Type]
+                           ,biFuncRetType=VoidType}
+               ,BuildinFunc{biFuncName="взятьПортБит"
+                           ,biFuncTargetName="getPortBit"
+                           ,biFuncArgs=[Int32Type, Int32Type]
+                           ,biFuncRetType=BoolType}
+               ,BuildinFunc{biFuncName="устПортБит"
+                           ,biFuncTargetName="setPortBit"
+                           ,biFuncArgs=[Int32Type, Int32Type, BoolType]
+                           ,biFuncRetType=VoidType}]

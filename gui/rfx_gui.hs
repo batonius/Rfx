@@ -2,7 +2,6 @@
 import Graphics.UI.Gtk hiding (fill)
 import Graphics.UI.Gtk.SourceView
 import Control.Monad
-import System.IO
 import Language.Rfx.Compiler
 import Language.Rfx.Validator
 import Language.Rfx.Lexer
@@ -10,8 +9,9 @@ import Language.Rfx.Parser
 import Language.Rfx.Error
 import System.Directory
 import Control.Exception 
-import Prelude hiding (catch)
-
+import Prelude hiding (catch, readFile, writeFile)
+import System.IO.UTF8 hiding(putStrLn)
+    
 onlyLexer :: String -> String
 onlyLexer = show . lexString
 
