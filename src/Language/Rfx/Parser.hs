@@ -143,19 +143,30 @@ whileParser = do
 ifParser :: TokenParser (Statment SynExpr)
 ifParser = do
   tokenParser IfToken
+  ifRestParser
+              
+ifRestParser :: TokenParser (Statment SynExpr)
+ifRestParser = do
   pos <- getPosition
   expr <- exprParser
   tokenParser ThenToken
   sts <- manyTill statmentParser $ choice [lookAhead $ tokenParser EndToken
-                                          ,lookAhead $ tokenParser ElseToken]
-  next <- choice [tokenParser EndToken
-                 ,tokenParser ElseToken]
-  if next /= ElseToken
-    then return $ IfSt expr sts pos
-    else do
+                                          ,lookAhead $ tokenParser ElseToken
+                                          ,lookAhead $ tokenParser ElifToken]
+  next <- choice [ tokenParser EndToken
+                 , tokenParser ElseToken
+                 , tokenParser ElifToken]
+  case next of
+    EndToken -> return $ IfSt expr sts pos
+    ElseToken -> do
       sts2 <- manyTill statmentParser $ tokenParser EndToken
       return $ IfElseSt expr sts sts2 pos
+    ElifToken -> do
+      subIf <- ifRestParser
+      return $ IfElseSt expr sts [subIf] pos
+    _ -> error "SRSLY GUYS, WTF?"
 
+             
 nextParser :: TokenParser (Statment SynExpr)
 nextParser = do
   tokenParser NextToken
@@ -268,6 +279,7 @@ tokenOps = [ (PlusToken, PlusSynOp)
            , (MinusToken, MinusSynOp)
            , (AsteriskToken, MulSynOp)
            , (SlashToken, DivSynOp)
+           , (PercentToken, ModSynOp)
            , (EqualToken, EqlSynOp)
            , (NEqualToken, NEqlSynOp)
            , (GrToken, GrSynOp)

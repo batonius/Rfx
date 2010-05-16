@@ -7,7 +7,6 @@ import Language.Rfx.Validator
 import Language.Rfx.Lexer
 import Language.Rfx.Parser
 import Language.Rfx.Error
-import System.Directory
 import Control.Exception 
 import Prelude hiding (catch, readFile, writeFile)
 import System.IO.UTF8 hiding(putStrLn)
@@ -100,6 +99,16 @@ main = do
   set errorTag [ textTagBackground := "#faa" ]
   tagTable <- textBufferGetTagTable rfxBuffer
   textTagTableAdd tagTable errorTag
+  fd <- fontDescriptionNew
+  fontDescriptionSetFamily fd "Consolas"
+  fontDescriptionSetSize fd 11
+  widgetModifyFont rfxSourceView (Just fd)
+  widgetModifyFont resSourceView (Just fd)
+  sourceViewSetAutoIndent rfxSourceView True
+--  sourceViewSetIndentOnTab rfxSourceView True
+  sourceViewSetTabWidth rfxSourceView 4
+  sourceViewSetShowLineNumbers rfxSourceView True
+  --
   buttonBoxSetLayout buttonBox ButtonboxStart
   mapM_ (boxPackStartDefaults buttonBox)
         [openButton, saveButton, compileButton

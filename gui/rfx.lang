@@ -54,6 +54,7 @@
       <keyword>then</keyword>
       <keyword>end</keyword>
       <keyword>else</keyword>
+      <keyword>elif</keyword>
       <keyword>break</keyword>
       <keyword>next</keyword>
       <keyword>wait</keyword>
@@ -95,7 +96,8 @@
     <context id="number" style-ref="decimal">
       <match extended="true">
         (?&lt;![\w\.])
-        (([0-9]+)|([0-9]+\.[0-9]+([Ee][-]?[0-9]+)?))
+        (([0-9]+)|([0-9]+\.[0-9]+([Ee][-]?[0-9]+)?)
+        |(0[0-9a-fA-F]+[hH])|(0[01]+[bB]))
         (?![\w\.])
       </match>
     </context>

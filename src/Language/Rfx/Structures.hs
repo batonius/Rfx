@@ -235,6 +235,7 @@ data SynOper = PlusSynOp
              | MinusSynOp
              | MulSynOp
              | DivSynOp
+             | ModSynOp
              | EqlSynOp
              | NEqlSynOp
              | GrSynOp
@@ -256,6 +257,7 @@ data SemOper = NumPlusSemOp
              | NumGrEqlSemOp
              | NumLsEqlSemOp
              | NumDivSemOp
+             | NumModSemOp
              | BoolAndSemOp
              | BoolOrSemOp
              | BoolXorSemOp
@@ -317,8 +319,11 @@ Int16Type `typeCanBe` Int32Type = True
 typeCanBe a b = a == b
 
 typeOfExpr :: SemExpr -> VarType
-typeOfExpr (NumSemExpr n) | n<2^7 && n>(-2)^7 = Int8Type
-                          | n<2^15 && n>(-2)^15 = Int16Type
+-- typeOfExpr (NumSemExpr n) | n<2^7+1 && n>((-2)^7-1) = Int8Type
+--                           | n<2^15+1 && n>((-2)^15-1) = Int16Type
+--                           | otherwise = Int32Type -- assume const size checked
+typeOfExpr (NumSemExpr n) | n<=2^8 = Int8Type
+                          | n<=2^16 = Int16Type
                           | otherwise = Int32Type -- assume const size checked
 typeOfExpr (BoolSemExpr _) = BoolType
 typeOfExpr (TimeSemExpr _) = TimeType
@@ -355,6 +360,7 @@ opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp, TimePlusSemOp])
                        ,(MinusSynOp, [NumMinusSemOp, TimeMinusSemOp])
                        ,(MulSynOp, [NumMulSemOp])
                        ,(DivSynOp, [NumDivSemOp])
+                       ,(ModSynOp, [NumModSemOp])
                        ,(EqlSynOp, [NumEqlSemOp, TimeEqlSemOp, BoolEqlSemOp])
                        ,(NEqlSynOp, [NumNEqlSemOp, TimeNEqlSemOp, BoolNEqlSemOp])
                        ,(GrSynOp, [NumGrSemOp, TimeGrSemOp])
@@ -370,7 +376,8 @@ semOpTypes :: [(SemOper, (VarType, VarType, VarType))]
 semOpTypes = concat [[(NumPlusSemOp, (numType, numType, numType))
                      ,(NumMinusSemOp, (numType, numType, numType))
                      ,(NumMulSemOp, (numType, numType, numType))
-                     ,(NumDivSemOp, (numType, numType, numType))]
+                     ,(NumDivSemOp, (numType, numType, numType))
+                     ,(NumModSemOp, (numType, numType, numType))]
                      | numType <- [Int8Type, Int16Type, Int32Type]]
              ++ [(NumEqlSemOp, (Int32Type, Int32Type, BoolType)) -- Int32 - most general numeric type
                 ,(NumLsSemOp, (Int32Type, Int32Type, BoolType))

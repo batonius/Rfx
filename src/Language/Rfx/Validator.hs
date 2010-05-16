@@ -4,7 +4,7 @@ where
 import Text.ParserCombinators.Parsec
 import Language.Rfx.Error
 import Language.Rfx.Structures
-import Data.Char(toUpper, toLower)
+import Data.Char(toUpper)
 import qualified Data.Map as Map
 import Control.Exception hiding (try)
 
@@ -102,7 +102,7 @@ validateStatment pr scope st@(WaitSt ex n pos) =
     in case typeOfExpr valEx of
          BoolType -> WaitSt valEx n pos
          TimeType -> WaitSt valEx n pos
-         otherwise -> throw $ NeedBoolSemExc st
+         _ -> throw $ NeedBoolSemExc st
             
 validateStatment pr scope st@(AssignSt rValue expr pos) =
     let valExpr = validateExpr pr scope expr
@@ -273,7 +273,8 @@ priorityList = [[AndSynOp
                ,[PlusSynOp
                 ,MinusSynOp]
                ,[MulSynOp
-                ,DivSynOp]
+                ,DivSynOp
+                ,ModSynOp]
                ]
 
 applyOpPriority :: SynExpr -> SynExpr

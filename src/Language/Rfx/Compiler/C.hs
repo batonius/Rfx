@@ -364,6 +364,7 @@ exprCompiler (OpSemExpr op le re _) = do
                     NumLsSemOp     -> "< "
                     NumLsEqlSemOp  -> "<= "
                     NumDivSemOp    -> "/ "
+                    NumModSemOp    -> "% "
                     BoolAndSemOp   -> "&& "
                     BoolOrSemOp    -> "|| "
                     BoolEqlSemOp   -> "== "

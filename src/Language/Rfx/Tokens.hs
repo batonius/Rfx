@@ -22,6 +22,7 @@ data Token = NumberToken Integer        -- Number
            | MinusToken             -- -
            | AsteriskToken          -- *
            | SlashToken             -- /
+           | PercentToken           -- %
            | LParToken              -- (
            | RParToken              -- )
            | LBracketToken          -- [
@@ -42,6 +43,7 @@ data Token = NumberToken Integer        -- Number
            | IfToken                -- "if"
            | ThenToken              -- "then"
            | ElseToken              -- "else"
+           | ElifToken              -- "elif"
            | EndToken               -- "end"
            | SemicolonToken         -- ;
            | WhereToken             -- "where"
@@ -67,6 +69,7 @@ keywordTokens =
     , ("STATE", StateToken)
     , ("IF", IfToken)
     , ("ELSE", ElseToken)
+    , ("ELIF", ElifToken)
     , ("END", EndToken)
     , ("WHERE", WhereToken)
     , ("THEN", ThenToken)
@@ -107,6 +110,7 @@ symbolTokens = [ ("+", PlusToken)
                , ("-", MinusToken)
                , ("*", AsteriskToken)
                , ("/", SlashToken)
+               , ("%", PercentToken)
                , ("(", LParToken)
                , (")", RParToken)
                , ("[", LBracketToken)

@@ -6,7 +6,7 @@ import Language.Rfx.Error
 import Text.ParserCombinators.Parsec
 import Control.Monad
 import Control.Exception hiding (try)
-import Data.Char(toUpper, toLower)
+import Data.Char(toUpper, toLower, ord)
 
 lexString :: String -> [Tagged Token]
 lexString s = case parse mainLexer "" s of
@@ -53,11 +53,41 @@ symbolLexer :: String -> Parser (Tagged String)
 symbolLexer s = (taggedParser $ string s) <?> ("symbol " ++ s)
 
 numberLexer :: Parser (Tagged Token)
-numberLexer = taggedParser $ do
+numberLexer = choice [ try hexNumberLexer
+                     , try binNumberLexer
+                     , try decNumberLexer]
+                
+decNumberLexer :: Parser (Tagged Token)
+decNumberLexer = taggedParser $ do
   whiteSpaceLexer
   numberString <- many1 digit
   return $ NumberToken (read numberString)
+         
+hexNumberLexer :: Parser (Tagged Token)
+hexNumberLexer = taggedParser $ do
+  whiteSpaceLexer
+  string "0"
+  numberString <- many1 $ oneOf ['0', '1', '2', '3', '4', '5', '6', '7'
+                               ,'8', '9', 'a', 'b', 'c', 'd', 'e'
+                               ,'f', 'A', 'B', 'C', 'D', 'E', 'F']
+  char 'h' <|> char 'H'
+  let hexCharToNum c = if c<='9'
+                         then ord c - ord '0'
+                         else 10+((ord $ toUpper c) - ord 'A')
+  let number = toInteger $ foldl (\n c -> n*16 + hexCharToNum c) 0 numberString
+  return $ NumberToken number
 
+binNumberLexer :: Parser (Tagged Token)
+binNumberLexer = taggedParser $ do
+  whiteSpaceLexer
+  string "0"
+  numberString <- many1 $ oneOf ['0', '1']
+  char 'b' <|> char 'B'
+  let binCharToNum c = ord c - ord '0'
+  let number = toInteger $ foldl (\n c-> n*2 + binCharToNum c) 0 numberString
+  return $ NumberToken number
+
+         
 stringLexer :: Parser (Tagged Token)
 stringLexer = taggedParser $ do
   whiteSpaceLexer
