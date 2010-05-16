@@ -50,6 +50,7 @@ data Token = NumberToken Integer        -- Number
            | WhileToken             -- "while"
            | DoToken                -- "do"
            | ReturnToken            -- "return"
+           | ConstToken             -- "const"
            | CommaToken             -- ,
            | BreakToken             -- "break"
            | TrueToken              -- "true"
@@ -85,10 +86,12 @@ keywordTokens =
     , ("XOR", XorToken)
     , ("NOT", NotToken)
     , ("WAIT", WaitToken)
+    , ("CONST", ConstToken)
     , ("ПОТОК", ThreadToken)
     , ("СОСТОЯНИЕ", StateToken)
     , ("ЕСЛИ", IfToken)
     , ("ИНАЧЕ", ElseToken)
+    , ("ИНЕСЛИ", ElifToken)
     , ("КОНЕЦ", EndToken)
     , ("ГДЕ", WhereToken)
     , ("ТОГДА", ThenToken)
@@ -103,7 +106,8 @@ keywordTokens =
     , ("ИЛИ", OrToken)
     , ("ИИЛИ", XorToken)
     , ("НЕ", NotToken)
-    , ("ЖДАТЬ", WaitToken)]
+    , ("ЖДАТЬ", WaitToken)
+    , ("ПОСТ", ConstToken)]
 
 symbolTokens :: [(String, Token)]
 symbolTokens = [ ("+", PlusToken)

@@ -421,8 +421,10 @@ exprCompiler (ArraySemExpr exprs) = do
   addArg exprs
                            
 varCompiler :: Var SemExpr -> Compiler ()
-varCompiler v = do
-  addString $ (getVarFullName v) ++ " "
+varCompiler v@Var{varConst, varInitValue} = do
+  if varConst
+     then exprCompiler $ SubSemExpr varInitValue
+     else addString $ (getVarFullName v) ++ " "
 
 typeCompiler :: VarType -> Compiler ()
 typeCompiler tp = addString $ typeName tp
@@ -443,18 +445,30 @@ arrayTypeSizes (ArrayType st size) = arrayTypeSizes st ++ "[" ++ show size ++ "]
 arrayTypeSizes _ = ""
                                    
 varDefenitionCompiler :: Var SemExpr -> Compiler ()
-varDefenitionCompiler var = do
-  makeIndent
-  typeCompiler (varType var)
-  addString " "
-  addString $ getVarFullName var
-  addString $ arrayTypeSizes $ varType var
-  if (varInitValue var /= VoidSemExpr)
+varDefenitionCompiler var@Var{varConst} = do
+  if varConst
      then do
-       addString " = "
-       exprCompiler (varInitValue var)
-     else return ()
-  addString ";\n"
+       return ()
+     --   addString "#define "
+     --   addString $ getVarFullName var
+     --   if (varInitValue var /= VoidSemExpr)
+     --     then do
+     --       addString "  ("
+     --       exprCompiler (varInitValue var)
+     --       addString ")"
+     --     else return ()
+     else do
+       makeIndent
+       typeCompiler (varType var)
+       addString " "
+       addString $ getVarFullName var
+       addString $ arrayTypeSizes $ varType var
+       if (varInitValue var /= VoidSemExpr)
+         then do
+           addString " = "
+           exprCompiler (varInitValue var)
+         else return ()
+       addString ";\n"
 
 getVarFullName :: Var SemExpr -> String
 getVarFullName var = "__rfx__" ++ (case (varScope var) of

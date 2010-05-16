@@ -24,7 +24,7 @@ parseProgram ts = case runParser programParser parserState "" ts of
 
 programParser :: TokenParser (Program SynExpr)
 programParser = do
-  vars <- many $ try $ (varDefParser InGlobal False)
+  vars <- many $ try $ (varDefParser InGlobal)
   funcs <- many $ try $ funcDefParser
   programThreads <- many1 threadParser
   ParserState{parserVars} <- getState
@@ -37,8 +37,9 @@ addVars vars = do
   state@ParserState{parserVars} <- getState
   setState state{parserVars=parserVars ++ vars}
 
-varDefParser :: ProgramPos SynExpr -> Bool -> TokenParser (Var SynExpr)
-varDefParser scope arg = do
+varDefParser :: ProgramPos SynExpr -> TokenParser (Var SynExpr)
+varDefParser scope = do
+  isConst <- (try $ tokenParser ConstToken) <|> return EOFToken
   typeName <- typeNameParser
   varSourcePos <- getPosition
   (IdentifierToken varName) <- identifierParser
@@ -48,12 +49,17 @@ varDefParser scope arg = do
                    viv <- exprParser
                    tokenParser SemicolonToken
                    return viv
+  let varConst = case isConst of
+                   ConstToken -> True
+                   _ -> False
   return Var{varName
             ,varType=typeName
             ,varInitValue
             ,varScope=scope
             ,varSourcePos
-            ,varArg=arg}
+            ,varArg=False
+            ,varConst
+            }
 
 funcDefParser :: TokenParser (Func SynExpr)
 funcDefParser = do
@@ -70,9 +76,10 @@ funcDefParser = do
                   ,varScope=funcScope
                   ,varSourcePos=funcSourcePos
                   ,varInitValue=VoidSynExpr
-                  ,varArg=True}
+                  ,varArg=True
+                  ,varConst=False}
     tokenParser RParToken
-    localVars <- many $ try (varDefParser funcScope False)
+    localVars <- many $ try (varDefParser funcScope )
     statments <- manyTill statmentParser $ do
       tokenParser EndToken
       tokenParser SemicolonToken
@@ -91,7 +98,7 @@ threadParser = do
   let thName = ThreadName threadName
   let threadScope = InThread thName
   tokenParser WhereToken
-  vars <- many $ try (varDefParser threadScope False)
+  vars <- many $ try (varDefParser threadScope )
   addVars vars
   threadStates <- manyTill (stateParser thName) $ do
     tokenParser EndToken
@@ -104,7 +111,7 @@ stateParser threadName = do
   (IdentifierToken stateName) <- identifierParser
   let stateScope = InState threadName $ StateName stateName
   tokenParser WhereToken
-  vars <- many $ try (varDefParser stateScope False)
+  vars <- many $ try (varDefParser stateScope)
   addVars vars
   zeroLastWait
   stateStatments <- manyTill statmentParser $ do

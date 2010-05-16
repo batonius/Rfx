@@ -93,6 +93,8 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | NotArrayAccessSemExpr SynExpr SourcePos
                   | IntTooBigSemExc Integer SourcePos
                   | NotSameTypesInArraySemExc SourcePos
+                  | AssignConstVariableSemExc (EVariable SynExpr) SourcePos
+                  | ConstVarWithoutInitSemExc (Var SynExpr)
                     deriving Typeable
 
 instance Exception SemException where
@@ -163,6 +165,13 @@ instance Show SemException where
     show (NotSameTypesInArraySemExc pos) =
         printf (__ "Error: different types in array constant at %s.")
                (show pos)
+    show (AssignConstVariableSemExc _ pos) =
+        printf (__ "Error: assign to constant variable at %s.")
+               (show pos)
+    show (ConstVarWithoutInitSemExc Var{varName, varSourcePos}) =
+        printf (__ "Error: constant %s without init value at %s.")
+               varName
+               (show varSourcePos)
     show _ = (__ "Lolwut?")
                     
 instance Lined SemException where
@@ -184,4 +193,6 @@ instance Lined SemException where
     getErrorLine (NotArrayAccessSemExpr _ pos)                  = sourceLine pos
     getErrorLine (IntTooBigSemExc _ pos)                        = sourceLine pos
     getErrorLine (NotSameTypesInArraySemExc pos)                = sourceLine pos
+    getErrorLine (AssignConstVariableSemExc _ pos)              = sourceLine pos
+    getErrorLine (ConstVarWithoutInitSemExc Var{varSourcePos})  = sourceLine varSourcePos
     getErrorLine _                                              = 0

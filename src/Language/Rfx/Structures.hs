@@ -63,6 +63,7 @@ data (Expression e) => Var e = Var
     , varType :: (EVariableType e)
     , varSourcePos :: SourcePos
     , varArg :: Bool
+    , varConst :: Bool
     }
                               deriving (Show, Ord)
 

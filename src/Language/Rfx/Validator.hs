@@ -36,12 +36,13 @@ validateVars pr vars = validateVars' vars [] where
     validateVars' :: [Var SynExpr] -> [Var SemExpr] -> [Var SemExpr]
     validateVars' [] vVars = vVars
     validateVars' (var@Var{varScope, varInitValue, varArg
-                           ,varType, varName, varSourcePos}:uVars) vVars =
+                           ,varType, varName, varSourcePos, varConst=varConst'}:uVars) vVars =
       let pr' = pr{programVars=vVars}
           vInitVal = validateExpr pr' InGlobal varInitValue
           vScope = transScope pr varScope varSourcePos
           vVarType = validateType varType varSourcePos
-      in if (not.null) $ usedVars vInitVal
+          uv = usedVars vInitVal
+      in if (varConst' && ((not.null) uv)) || ((not varConst') && (not (all varConst uv)))
            then throw $ VarInVarInitSemExc var
            else if (vVarType /= VoidType) && (typeOfExpr vInitVal /= VoidType)
                     && (not (typeOfExpr vInitVal `typeCanBe` vVarType))
@@ -50,13 +51,16 @@ validateVars pr vars = validateVars' vars [] where
                 else let sameVars = filter (\Var{varName=vn} -> vn == varName) $ scopeVars vScope vVars
                      in if (not.null)  sameVars
                         then throw $ VarAlreadyExistsSemExc var (Language.Rfx.Structures.varSourcePos (head sameVars))
-                        else validateVars' uVars (Var{varName
-                                                     ,varType=vVarType
-                                                     ,varSourcePos
-                                                     ,varScope = vScope
-                                                     ,varInitValue = vInitVal
-                                                     ,varArg}
-                                                  :vVars)
+                        else if varConst' && (vInitVal == VoidSemExpr)
+                               then throw $ ConstVarWithoutInitSemExc var
+                               else validateVars' uVars (Var{varName
+                                                            ,varType=vVarType
+                                                            ,varSourcePos
+                                                            ,varScope = vScope
+                                                            ,varInitValue = vInitVal
+                                                            ,varArg
+                                                            ,varConst=varConst' }
+                                                         :vVars)
 
 validateFunc :: Program SemExpr -> Func SynExpr -> Func SemExpr
 validateFunc pr synFunc@UserFunc{uFuncName, uFuncStatments, uFuncRetType, uFuncPos} = func
@@ -131,8 +135,9 @@ validateStatment pr scope (ReturnSt expr pos) =
 validateStatment pr scope (FunSt e pos) = FunSt (validateExpr pr scope e) pos
 
 validateRValue :: Program SemExpr -> ProgramPos SemExpr -> SourcePos  -> RValue SynExpr -> RValue SemExpr
-validateRValue pr scope pos (RValueVar varName) = RValueVar var
-    where var = varByName pr scope varName pos
+validateRValue pr scope pos (RValueVar varName) = if not varConst then RValueVar var
+                                                  else throw $ AssignConstVariableSemExc varName pos
+    where var@Var{varConst} = varByName pr scope varName pos
 validateRValue pr scope pos (RValueArrayAccess rValue expr) = RValueArrayAccess rValue' expr'
     where rValue' = validateRValue pr scope pos rValue
           expr' = validateExpr pr scope expr
