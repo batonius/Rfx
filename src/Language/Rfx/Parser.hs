@@ -219,7 +219,8 @@ exprParser = do
                 ,try funExprParser
                 ,try varExprParser
                 ,try subExprParser
-                ,try stringExprParser]
+                ,try stringExprParser
+                ,try arrayExprParser]
   pos <- getPosition
   arrayIndices <- many $ do
                    tokenParser LBracketToken
@@ -274,6 +275,14 @@ varExprParser = do
   pos <- getPosition
   return $ VarSynExpr varName pos
 
+arrayExprParser :: TokenParser SynExpr
+arrayExprParser = do
+  pos <- getPosition
+  tokenParser LParToken
+  vals <- sepBy exprParser (tokenParser CommaToken)
+  tokenParser RParToken
+  return $ ArraySynExpr pos vals
+         
 tokenOps :: [(Token, SynOper)]
 tokenOps = [ (PlusToken, PlusSynOp)
            , (MinusToken, MinusSynOp)

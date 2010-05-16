@@ -150,7 +150,8 @@ data SynExpr = NumSynExpr Integer SourcePos
              | BoolSynExpr Bool
              | TimeSynExpr Integer -- ms
              | VoidSynExpr
-             | ArrayAccessSynExpr SourcePos SynExpr SynExpr 
+             | ArrayAccessSynExpr SourcePos SynExpr SynExpr
+             | ArraySynExpr SourcePos [SynExpr]
                deriving (Show, Eq, Ord)
 
 instance Expression SynExpr where
@@ -184,6 +185,7 @@ data SemExpr = NumSemExpr Integer
              | TimeSemExpr Integer -- ms
              | VoidSemExpr
              | ArrayAccessSemExpr SemExpr SemExpr
+             | ArraySemExpr [SemExpr]
              deriving (Show, Eq, Ord)
                               
 instance Expression SemExpr where
@@ -335,6 +337,9 @@ typeOfExpr (OpSemExpr _ _ _ opRetType) = opRetType
 typeOfExpr VoidSemExpr = VoidType
 typeOfExpr (ArrayAccessSemExpr expr _) = subType
     where (ArrayType subType _) = typeOfExpr expr
+typeOfExpr (ArraySemExpr exprs) = if (not.null) exprs then
+                                      ArrayType (typeOfExpr $ head exprs) $  toInteger $ length exprs
+                                  else VoidType
                 
 isArrayType :: VarType -> Bool
 isArrayType (ArrayType _ _) = True

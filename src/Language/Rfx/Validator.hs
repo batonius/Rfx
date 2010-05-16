@@ -149,8 +149,12 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' _ _ (StringSynExpr s) = StringSemExpr s
       validateExpr' _ _ (TimeSynExpr t) = TimeSemExpr t
       validateExpr' pr scope e@(ArrayAccessSynExpr pos expr index) = let expr' = validateExpr pr scope expr
-                                                                         index' = validateExpr pr scope index in
-                                                                     if (isArrayType $ typeOfExpr expr')
+                                                                         index' = validateExpr pr scope index
+                                                                         unsubExpr (SubSemExpr e) = e
+                                                                         unsubExpr e = e
+                                                                         isArrayExpr (ArraySemExpr _ ) = True
+                                                                         isArrayExpr _ = False in
+                                                                     if (not.isArrayExpr.unsubExpr) expr' && (isArrayType $ typeOfExpr expr')
                                                                             && (typeOfExpr index' `typeCanBe` Int32Type)
                                                                      then ArrayAccessSemExpr expr' index'
                                                                      else throw $ NotArrayAccessSemExpr e pos
@@ -179,6 +183,12 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
                                            then throw $ OpSemExc exp
                                            else head ops
           in OpSemExpr semOp vlExpr vrExpr opRetType
+      validateExpr' pr scope (ArraySynExpr pos es) = ArraySemExpr es''
+          where es' = map (validateExpr' pr scope) es
+                headType = typeOfExpr $ head es'
+                es'' = if (length es' > 0) && (all ((==headType).(typeOfExpr)) $ tail es')
+                         then es'
+                         else throw $ NotSameTypesInArraySemExc pos
 
 validateType :: VarTypeName -> SourcePos -> VarType
 validateType (VarTypeName typeName) pos = case Map.lookup (map toUpper typeName)
@@ -246,6 +256,7 @@ usedVars (VarSemExpr var) = [var]
 usedVars (OpSemExpr _ leftExpr rightExpr _ ) = (usedVars leftExpr) ++ (usedVars rightExpr)
 usedVars (SubSemExpr subExpr) = usedVars subExpr
 usedVars (FunSemExpr _ args) = concat $ map usedVars args
+usedVars (ArraySemExpr vals) = concat $ map usedVars vals
 usedVars _ = []
 
 transScope :: Program SemExpr -> ProgramPos SynExpr -> SourcePos -> ProgramPos SemExpr

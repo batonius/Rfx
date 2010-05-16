@@ -218,12 +218,23 @@ statmentsCompiler sts = do
   addLine "}"
 
 statmentCompiler :: Statment SemExpr -> Compiler ()
-statmentCompiler (AssignSt rValue expr _) = do
-  makeIndent
-  rValueCompiler rValue
-  addString "= "
-  exprCompiler expr
-  addString $ ";\n"
+statmentCompiler (AssignSt rValue expr pos) = do
+  let exprType = typeOfExpr expr
+  case exprType of
+    (ArrayType _ n) -> do
+      let (ArraySemExpr exprs) = expr            
+      sequence_ [ do
+                  let e = exprs !! (fromInteger i)
+                  statmentCompiler $ AssignSt
+                                   (RValueArrayAccess rValue (NumSemExpr i))
+                                   e pos
+                  | i <- [0..(n-1)]]
+    _ -> do
+      makeIndent
+      rValueCompiler rValue
+      addString "= "
+      exprCompiler expr
+      addString $ ";\n"
 
 statmentCompiler (IfSt expr sts _) = do
   makeIndent
@@ -397,6 +408,18 @@ exprCompiler (FunSemExpr func args) = do
 
 exprCompiler VoidSemExpr = error "Compiling void expression"
 
+exprCompiler (ArraySemExpr exprs) = do
+  addString "{"
+  let addArg [] = addString "}"
+      addArg [a] = do
+        exprCompiler a
+        addString "}"
+      addArg (a:as) = do
+        exprCompiler a
+        addString ", "
+        addArg as
+  addArg exprs
+                           
 varCompiler :: Var SemExpr -> Compiler ()
 varCompiler v = do
   addString $ (getVarFullName v) ++ " "

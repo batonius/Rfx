@@ -92,6 +92,7 @@ data SemException = VarInVarInitSemExc (Var SynExpr)
                   | StateAlreadyExistsSemExc String String
                   | NotArrayAccessSemExpr SynExpr SourcePos
                   | IntTooBigSemExc Integer SourcePos
+                  | NotSameTypesInArraySemExc SourcePos
                     deriving Typeable
 
 instance Exception SemException where
@@ -159,6 +160,9 @@ instance Show SemException where
     show (IntTooBigSemExc _ pos) =
         printf (__ "Error: integer constant too big at %s.")
                (show pos)
+    show (NotSameTypesInArraySemExc pos) =
+        printf (__ "Error: different types in array constant at %s.")
+               (show pos)
     show _ = (__ "Lolwut?")
                     
 instance Lined SemException where
@@ -179,4 +183,5 @@ instance Lined SemException where
     getErrorLine (NeedBoolSemExc st)                            = sourceLine $ statmentPos st
     getErrorLine (NotArrayAccessSemExpr _ pos)                  = sourceLine pos
     getErrorLine (IntTooBigSemExc _ pos)                        = sourceLine pos
+    getErrorLine (NotSameTypesInArraySemExc pos)                = sourceLine pos
     getErrorLine _                                              = 0
