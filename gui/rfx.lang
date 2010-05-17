@@ -79,6 +79,7 @@
       <keyword>int32</keyword>
       <keyword>string</keyword>
       <keyword>time</keyword>
+      <keyword>void</keyword>
       <keyword>лог</keyword>
       <keyword>цел8</keyword>
       <keyword>цел16</keyword>

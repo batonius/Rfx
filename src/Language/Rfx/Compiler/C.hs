@@ -109,7 +109,7 @@ programCompiler program = do
   addIndent
   sequence_ [do
               let timerName = getThreadTimerName thread
-              addLine $ "if (" ++ timerName ++ ">0)" 
+              addLine $ "if (" ++ timerName ++ ">0)"
               withIndent $ addLine $ timerName ++ " -= ms;"
               addLine $ "else if (" ++ timerName ++ "<0)"
               withIndent $ addLine $ timerName ++ " = 0;"
@@ -222,7 +222,7 @@ statmentCompiler (AssignSt rValue expr pos) = do
   let exprType = typeOfExpr expr
   case exprType of
     (ArrayType _ n) -> do
-      let (ArraySemExpr exprs) = expr            
+      let (ArraySemExpr exprs) = expr
       sequence_ [ do
                   let e = exprs !! (fromInteger i)
                   statmentCompiler $ AssignSt
@@ -351,8 +351,8 @@ exprCompiler (ArrayAccessSemExpr e i) = do
   exprCompiler e
   addString ")["
   exprCompiler i
-  addString "]"  
-            
+  addString "]"
+
 exprCompiler (VarSemExpr v) = varCompiler v
 exprCompiler (OpSemExpr op le re _) = do
   if op == BoolXorSemOp
@@ -419,7 +419,7 @@ exprCompiler (ArraySemExpr exprs) = do
         addString ", "
         addArg as
   addArg exprs
-                           
+
 varCompiler :: Var SemExpr -> Compiler ()
 varCompiler v@Var{varConst, varInitValue} = do
   if varConst
@@ -437,13 +437,13 @@ typeName tp = case tp of
                 VoidType -> "void"
                 Int8Type -> "char"
                 Int16Type -> "short"
-                Int32Type -> "int"
+                Int32Type -> "long int"
                 (ArrayType st _) -> typeName st
 
 arrayTypeSizes :: VarType -> String
 arrayTypeSizes (ArrayType st size) = arrayTypeSizes st ++ "[" ++ show size ++ "]"
 arrayTypeSizes _ = ""
-                                   
+
 varDefenitionCompiler :: Var SemExpr -> Compiler ()
 varDefenitionCompiler var@Var{varConst} = do
   if varConst

@@ -40,20 +40,20 @@ data (Expression e) => Program e = Program
       programThreads :: [Thread e]
     , programVars :: [Var e]
     , programFuncs :: [Func e]
-    } deriving (Show, Eq)
-                                
+    } deriving (Eq)
+
 -- Real objects
 data (Expression e) => Thread e = Thread
     {
       threadName :: String
     , threadStates :: [ThreadState e]
-    } deriving (Show, Ord)
-                               
+    } deriving (Ord)
+
 data (Expression e) => ThreadState e = ThreadState
     {
       stateName :: String
     , stateStatments :: [Statment e]
-    } deriving (Show, Ord)
+    } deriving (Ord)
 
 data (Expression e) => Var e = Var
     {
@@ -65,7 +65,7 @@ data (Expression e) => Var e = Var
     , varArg :: Bool
     , varConst :: Bool
     }
-                              deriving (Show, Ord)
+                               deriving (Show, Ord)
 
 data VarType = Int8Type
              | Int16Type
@@ -84,7 +84,7 @@ data VarType = Int8Type
 data (Expression e) => RValue e = RValueVar (EVariable e)
                                | RValueArrayAccess (RValue e) e
                                deriving (Show, Eq, Ord)
-                        
+
 data (Expression e) => Func e = BuildinFunc
     {
       biFuncName       ::String
@@ -111,7 +111,7 @@ data VarTypeName = VarTypeName String
                  | ArrayVarTypeName VarTypeName Integer
                    deriving (Eq, Show, Ord)
 data FuncName = FuncName String  deriving (Show, Eq, Ord)
-              
+
 -- Expr class
 class (Eq e
       ,Eq (EVariable e)
@@ -141,9 +141,9 @@ class (Eq e
     varExpr :: e -> Bool
     voidExpr :: e -> Bool
 
--- Expr instances                
+-- Expr instances
 data SynExpr = NumSynExpr Integer SourcePos
-             | OpSynExpr SynOper SynExpr SynExpr SourcePos 
+             | OpSynExpr SynOper SynExpr SynExpr SourcePos
              | VarSynExpr (EVariable SynExpr) SourcePos
              | SubSynExpr SynExpr
              | FunSynExpr (EFunction SynExpr) [SynExpr] SourcePos
@@ -188,7 +188,7 @@ data SemExpr = NumSemExpr Integer
              | ArrayAccessSemExpr SemExpr SemExpr
              | ArraySemExpr [SemExpr]
              deriving (Show, Eq, Ord)
-                              
+
 instance Expression SemExpr where
     type EVariable SemExpr = Var SemExpr
     type EVariableType SemExpr = VarType
@@ -210,30 +210,57 @@ instance Expression SemExpr where
     voidExpr VoidSemExpr = True
     voidExpr _ = False
 
-                      
--- Eq instances                      
+
+-- Eq instances
 instance (Expression e) => Eq (Var e) where
     (==) a b = (varName a) == (varName b)
 
 instance Expression e => Eq (Thread e) where
     (==) a b = (threadName a) == (threadName b)
-                               
+
 instance Expression e => Eq (ThreadState e) where
     (==) a b = (stateName a) == (stateName b)
-               
+
 instance (Expression e) => Eq (Func e) where
     (==) BuildinFunc{biFuncName=biFuncNamel} BuildinFunc{biFuncName=biFuncNamer} = biFuncNamel == biFuncNamer
     (==) UserFunc{uFuncName=uFuncNamel} UserFunc{uFuncName=uFuncNamer} = uFuncNamel == uFuncNamer
     (==) _ _ = False
 
--- ProgramPos               
+-- Show instances
+instance (Expression e, Show e) => Show (Program e) where
+    show Program{programThreads, programVars} =
+        "Program {"
+        ++ "programVars=["
+        ++ concat [ show var ++", " | var <- programVars]
+        ++ "], "
+        ++ "program threads=["
+        ++ concat [ "Thread " ++ threadName
+                    ++ "{threadStates=["
+                    ++ concat [ "State " ++ stateName
+                                ++ "{stateStatements=["
+                                ++ concat [
+                                        show statment ++ ","
+                                        | statment <- stateStatments]
+                                ++ "]},"
+                           | ThreadState{stateName, stateStatments} <- threadStates]
+                    ++"]},"
+                | Thread{threadName, threadStates} <- programThreads]
+        ++ "]}"
+
+instance (Expression e) => Show (Thread e) where
+    show Thread{threadName} = "Thread " ++ threadName ++ " "
+
+instance (Expression e) => Show (ThreadState e) where
+    show ThreadState{stateName} = "State " ++ stateName ++ " "
+
+-- ProgramPos
 data (Expression e) => ProgramPos e = InGlobal
                                    | InThread (EThread e)
                                    | InState (EThread e) (EState e)
                                    | InFunction (EFunction e)
                                      deriving (Show, Eq, Ord)
 
--- Operators                                              
+-- Operators
 data SynOper = PlusSynOp
              | MinusSynOp
              | MulSynOp
@@ -280,7 +307,7 @@ data SemOper = NumPlusSemOp
 data (Expression e) => Statment e = AssignSt (RValue e) e SourcePos
                                  | IfSt e [Statment e] SourcePos
                                  | IfElseSt e [Statment e] [Statment e] SourcePos
-                                 | WhileSt e [Statment e] SourcePos 
+                                 | WhileSt e [Statment e] SourcePos
                                  | NextSt (EState e) SourcePos
                                  | BreakSt SourcePos
                                  | FunSt e SourcePos
@@ -299,12 +326,12 @@ statmentPos (BreakSt pos) = pos
 statmentPos (FunSt _ pos) = pos
 statmentPos (ReturnSt _ pos) = pos
 statmentPos (WaitSt _ _ pos) = pos
-                                            
+
 funcName :: (Expression e) => Func e -> String
 funcName BuildinFunc{biFuncName} = biFuncName
 funcName UserFunc{uFuncName} = uFuncName
 
-buildinFunc :: (Expression e) => Func e -> Bool                        
+buildinFunc :: (Expression e) => Func e -> Bool
 buildinFunc BuildinFunc{} = True
 buildinFunc _ = False
 
@@ -341,11 +368,11 @@ typeOfExpr (ArrayAccessSemExpr expr _) = subType
 typeOfExpr (ArraySemExpr exprs) = if (not.null) exprs then
                                       ArrayType (typeOfExpr $ head exprs) $  toInteger $ length exprs
                                   else VoidType
-                
+
 isArrayType :: VarType -> Bool
 isArrayType (ArrayType _ _) = True
 isArrayType _ = False
-              
+
 posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
 posChildOf _ InGlobal = True
 posChildOf (InFunction f) (InFunction g) = f == g
@@ -360,7 +387,7 @@ posChildOf a b = case b of
                                   InFunction _ -> False
                  InState _ _ -> a == b
                  InFunction _ -> False
-                               
+
 opTypes :: Map.Map SynOper [SemOper]
 opTypes = Map.fromList [(PlusSynOp, [NumPlusSemOp, TimePlusSemOp])
                        ,(MinusSynOp, [NumMinusSemOp, TimeMinusSemOp])
@@ -422,6 +449,10 @@ buildinFuncs = [BuildinFunc{biFuncName="getPortByte"
                            ,biFuncTargetName="setPortBit"
                            ,biFuncArgs=[Int32Type, Int32Type, BoolType]
                            ,biFuncRetType=VoidType}
+               ,BuildinFunc{biFuncName="timeAddMs"
+                           ,biFuncTargetName="timeAddMs"
+                           ,biFuncArgs=[TimeType, Int32Type]
+                           ,biFuncRetType=TimeType}
                ,BuildinFunc{biFuncName="взятьПортБайт"
                            ,biFuncTargetName="getPortByte"
                            ,biFuncArgs=[Int32Type]

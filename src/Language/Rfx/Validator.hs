@@ -72,7 +72,7 @@ validateFunc pr synFunc@UserFunc{uFuncName, uFuncStatments, uFuncRetType, uFuncP
       vArgs = reverse $ filter (\Var{varScope, varArg} -> varArg && (varScope==InFunction func)) $ programVars pr
       vStatments = map (validateStatment pr (InFunction func)) uFuncStatments
 
-validateFunc _ _ = error "Buildin function validation"       
+validateFunc _ _ = error "Buildin function validation"
 
 validateStatment :: Program SemExpr -> ProgramPos SemExpr -> Statment SynExpr -> Statment SemExpr
 validateStatment pr scope st@(IfSt ex sts pos) =
@@ -89,7 +89,7 @@ validateStatment pr scope st@(IfElseSt ex ifSts elseSts pos) =
        else throw $ NeedBoolSemExc st
 
 validateStatment _ _ (BreakSt pos) = (BreakSt pos)
-                               
+
 validateStatment _ scope (NextSt stateName pos) =
     case scope of
       (InState thread _) -> NextSt (stateByName thread stateName pos) pos
@@ -107,7 +107,7 @@ validateStatment pr scope st@(WaitSt ex n pos) =
          BoolType -> WaitSt valEx n pos
          TimeType -> WaitSt valEx n pos
          _ -> throw $ NeedBoolSemExc st
-            
+
 validateStatment pr scope st@(AssignSt rValue expr pos) =
     let valExpr = validateExpr pr scope expr
         valType = typeOfExpr valExpr
@@ -131,7 +131,7 @@ validateStatment pr scope (ReturnSt expr pos) =
     in if ok
        then ReturnSt vExpr pos
        else throw $ ReturnWrongTypeSemExc pos
-            
+
 validateStatment pr scope (FunSt e pos) = FunSt (validateExpr pr scope e) pos
 
 validateRValue :: Program SemExpr -> ProgramPos SemExpr -> SourcePos  -> RValue SynExpr -> RValue SemExpr
@@ -141,7 +141,7 @@ validateRValue pr scope pos (RValueVar varName) = if not varConst then RValueVar
 validateRValue pr scope pos (RValueArrayAccess rValue expr) = RValueArrayAccess rValue' expr'
     where rValue' = validateRValue pr scope pos rValue
           expr' = validateExpr pr scope expr
-                                          
+
 validateExpr :: Program SemExpr -> ProgramPos SemExpr -> SynExpr -> SemExpr
 validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPriority expr
     where
@@ -149,7 +149,7 @@ validateExpr pr scope expr = validateExpr' pr scope $ dropSubExpr $ applyOpPrior
       validateExpr' _ _ VoidSynExpr = VoidSemExpr
       validateExpr' _ _ (NumSynExpr n pos) = if n>(2^31) || n<(-(2^31))
                                              then throw $ IntTooBigSemExc n pos
-                                             else NumSemExpr n 
+                                             else NumSemExpr n
       validateExpr' _ _ (BoolSynExpr b) = BoolSemExpr b
       validateExpr' _ _ (StringSynExpr s) = StringSemExpr s
       validateExpr' _ _ (TimeSynExpr t) = TimeSemExpr t
@@ -215,7 +215,7 @@ validateType (VarTypeName typeName) pos = case Map.lookup (map toUpper typeName)
                                           of Nothing -> throw $ NoSuchTypeSemExc typeName pos
                                              Just vVarType -> vVarType
 validateType (ArrayVarTypeName vt size) pos = ArrayType (validateType vt pos) size
-                                              
+
 -- ByName functions
 threadByName :: Program SemExpr -> ThreadName -> SourcePos -> Thread SemExpr
 threadByName ~Program{programThreads} (ThreadName thName) pos =
@@ -237,7 +237,7 @@ funcByName ~Program{programFuncs} fun@(FuncName fn) pos =
     in if null funcs
        then throw $ NoSuchFuncSemExc fun pos
        else head $ funcs
-                                           
+
 varByName :: Program SemExpr -> ProgramPos SemExpr -> VarName -> SourcePos -> Var SemExpr
 varByName ~Program{programVars} scope varName pos =
     case varName of
