@@ -1,0 +1,160 @@
+const int8 Clean_button = 10;
+const int8 Eql_button = 11;
+const int8 Div_button = 12;
+const int8 Mul_button = 13;
+const int8 Sub_button = 14;
+const int8 Add_button = 15;
+int8[6] lcd;
+int8[4][4] button_numbers = 
+	((Div_button, Mul_button,
+	  Sub_button, Add_button),
+	 (9, 6, 3, Eql_button),
+	 (8, 5, 2, 0),
+	 (7, 4, 1, Clean_button));
+int8[10] number_lines = 
+   (000000011b, 010011111b, 000100101b, 000001101b, 010011001b
+   ,001001001b, 001000001b, 000011111b, 000000001b, 000001001b);
+int8 button_line = 0;
+int8 button_row = 0;
+bool button_up = false;
+bool button_down = false;
+bool number_readed = false;
+bool clean_on_press = false;
+int8 last_pos = 0;
+int32 value = 0;
+int32 lvalue = 0;
+int8 op = 0;
+
+int32 abs(int32 n)
+	if n<0 then
+		return (0-n);
+	else
+		return n;
+	end;
+end;
+
+void clean_lcd() 
+	lcd = (0ffh, 0ffh, 0ffh,
+		   0ffh, 0ffh, 0ffh);
+	last_pos = 1;
+end;
+
+thread main where
+	int8 prev_op = 0;
+	state init where
+		clean_lcd();
+		next first_number;
+	end;
+	state first_number where
+		value = 0;
+		wait number_readed;
+		number_readed = false;				
+		clean_lcd();
+		if op == Clean_button then
+			lvalue = 0;
+			value = 0;
+		elif op != Eql_button then
+			prev_op = op;
+			lvalue = value;
+			value = 0;
+			next second_number;			
+		end;
+	end;
+	state second_number where
+		int8 i=0;
+		int32 res = 0;
+		wait number_readed;
+		if prev_op == Div_button then
+			res = lvalue / value;
+		elif prev_op == Mul_button then
+			res = lvalue * value;
+		elif prev_op == Sub_button then 
+			res = lvalue - value;
+		elif prev_op == Add_button then
+			res = value + lvalue;
+		end;
+		lvalue = res;
+		number_readed = false;
+		clean_lcd();
+		if res < 0 then
+			lcd[5] = 011111101b;		
+		end;
+		res = abs(res);
+		while i<5 and (i==0 or res>0) do
+			lcd[i] = number_lines[res % 10];
+			res = res/10;
+			i = i + 1;
+		end;		
+		clean_on_press = true;
+		if op == Clean_button or op == Eql_button then
+			clean_on_press = true;
+			lvalue = 0;
+			next first_number;
+		else
+			prev_op = op;
+			value = 0;				
+		end;
+	end;
+end;
+
+thread number_reader where
+	state read_number where
+		int8 number;
+		int8 i = 1;
+		wait button_up;
+		if clean_on_press then
+			clean_lcd();
+			clean_on_press = false;
+		end;
+		number = button_numbers[button_line][button_row];
+		if number<10 then
+			if last_pos<6 then
+				value = value*10 + number;
+				i = last_pos;
+				while i>0 do 
+					lcd[i] = lcd[i-1];
+					i = i - 1;
+				end;
+				last_pos = last_pos + 1;
+				lcd[0] = number_lines[number];
+			end;
+		elif number_readed == false then
+			number_readed = true;
+			op = number;
+		end;
+		button_up = false;
+	end;
+end;
+
+thread lcd_keyboard where
+	int8 char = 0;
+	state lcd_state where
+		int8 i = 0;
+		if char>5 then
+			char = 0;
+		end;
+		setPortByte(2, 0);
+		setPortBit(2, char, True);
+		setPortByte(4, lcd[char]);
+		if button_up == false then
+			if button_down 
+			   and char == button_line 
+               and getPortBit(3, button_row) == false then
+					button_down = false;
+					button_up = true;
+			else
+				while i<4 do
+					if getPortBit(3, i) then
+						button_line = char;
+						button_row = i;
+						button_down = true;
+						break;
+					end;
+					i = i + 1;
+				end;
+			end;
+		end;
+		char = char + 1;
+		wait #2ms;
+	end;
+end;

@@ -22,8 +22,8 @@ compileFile inFile = do
   return ()
 
 main :: IO ()
-main = do
-  (inFile:_) <- getArgs
+main = do   
+  (inFile:_) <- getArgs  
   inFileString <- readFile inFile
   (compileFile inFileString) `catch`
        (\ (ex::RfxException) -> do

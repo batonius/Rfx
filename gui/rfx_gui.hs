@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables,ExistentialQuantification #-}
-import Graphics.UI.Gtk hiding (fill)
+import Graphics.UI.Gtk -- hiding (fill)
 import Graphics.UI.Gtk.SourceView
 import Control.Monad
 import Language.Rfx.Compiler
@@ -101,7 +101,7 @@ main = do
   textTagTableAdd tagTable errorTag
   fd <- fontDescriptionNew
   fontDescriptionSetFamily fd "Consolas"
-  fontDescriptionSetSize fd 11
+  fontDescriptionSetSize fd 10
   widgetModifyFont rfxSourceView (Just fd)
   widgetModifyFont resSourceView (Just fd)
   sourceViewSetAutoIndent rfxSourceView True

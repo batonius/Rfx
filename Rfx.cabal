@@ -1,21 +1,77 @@
-Name:           Rfx
-Version:        0.1
-Cabal-Version:  >= 1.2
-License:        GPL
-Author:         Karavaev Egor
-Synopsis:       
-Build-Type:     Simple
-
-Executable rfx
-  Build-Depends:  utf8-string >= 0.3, parsec >= 3, containers >= 0.2, base >= 3, mtl >= 1.1
-  Main-Is:        rfx.hs
-  ghc-options:    -Wall
-  Hs-Source-Dirs: src
-
---Executable rfx_test
---  Build-Depends:  utf8-string >= 0.3, parsec >= 3, containers >= 0.2, base >= 3, mtl >= 1.1,
---                  process >= 1, directory >= 1, HUnit >= 1.2, QuickCheck >= 2,
---                  test-framework >= 0.2, test-framework-hunit >= 0.2, test-framework-quickcheck2 >= 0.2
---  Main-Is:        rfx_test.hs
---  ghc-options:    -Wall
---  Hs-Source-Dirs: ./src ./test
+name: Rfx
+version: 0.1
+cabal-version: >=1.2
+build-type: Simple
+license: GPL
+license-file: ""
+copyright:
+maintainer:
+build-depends: base >=3, containers >=0.2, mtl >=1.1, parsec >=3,
+               utf8-string >=0.3
+stability:
+homepage:
+package-url:
+bug-reports:
+synopsis:
+description: .
+             .
+             .
+category:
+author: Karavaev Egor
+tested-with:
+data-files:
+data-dir: ""
+extra-source-files:
+extra-tmp-files:
+exposed-modules: Language.Rfx.Validator Language.Rfx.Util
+                 Language.Rfx.Tokens Language.Rfx.Structures Language.Rfx.Parser
+                 Language.Rfx.Lexer Language.Rfx.Error Language.Rfx.Compiler
+                 Language.Rfx.Compiler.Common Language.Rfx.Compiler.C
+exposed: True
+buildable: True
+build-tools:
+cpp-options:
+cc-options:
+ld-options:
+pkgconfig-depends:
+frameworks:
+c-sources:
+extensions:
+extra-libraries:
+extra-lib-dirs:
+includes:
+install-includes:
+include-dirs:
+hs-source-dirs: src
+other-modules:
+ghc-prof-options:
+ghc-shared-options:
+ghc-options: -W
+hugs-options:
+nhc98-options:
+jhc-options:
+ 
+executable: rfx
+main-is: rfx.hs
+buildable: True
+build-tools:
+cpp-options:
+cc-options:
+ld-options:
+pkgconfig-depends:
+frameworks:
+c-sources:
+extensions:
+extra-libraries:
+extra-lib-dirs:
+includes:
+install-includes:
+include-dirs:
+hs-source-dirs: src
+other-modules:
+ghc-prof-options:
+ghc-shared-options:
+ghc-options: -W
+hugs-options:
+nhc98-options:
+jhc-options:

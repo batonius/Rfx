@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NamedFieldPuns, FlexibleContexts #-}
 module Language.Rfx.Validator(validateProgram)
 where
 import Text.ParserCombinators.Parsec
@@ -273,7 +273,10 @@ transScope pr (InState threadName stateName) pos =
         state = stateByName thread stateName pos
     in InState thread state
 
-scopeVars :: (Expression a) => ProgramPos a -> [Var a] -> [Var a]
+scopeVars :: (Expression a
+             , Eq (EFunction a)
+             , Eq (EThread a)
+             , Eq (EState a)) => ProgramPos a -> [Var a] -> [Var a]
 scopeVars scope = filter (\Var{varScope} -> scope `posChildOf` varScope)
 
 priorityList :: [[SynOper]]

@@ -11,7 +11,8 @@ import Data.Char(toUpper, toLower, ord)
 lexString :: String -> [Tagged Token]
 lexString s = case parse mainLexer "" s of
                 Left err -> throw $ LexException err
-                Right ts -> filter (\Tagged{value}->value/=CommentToken) ts
+                Right ts -> filter
+                  (\Tagged{value}->value/=CommentToken) ts
 
 taggedParser :: Parser a -> Parser (Tagged a)
 taggedParser parser = liftM2 Tagged getPosition parser
@@ -37,16 +38,20 @@ multiLineCommentLexer = taggedParser $ do
   return CommentToken
          
 anyCaseStringParser :: String -> Parser String
-anyCaseStringParser s = sequence [(char $ toLower c) <|> (char $ toUpper c)
+anyCaseStringParser s = sequence [(char $ toLower c)
+                                  <|> (char $ toUpper c)
                                   | c <- s]
 
 keywordLexer :: String -> Parser (Tagged String)
 keywordLexer str = (taggedParser $ do
                      st <- anyCaseStringParser str
                      lookAhead $ choice
-                               $ ([do try whiteSpaceCharLexer; return ""]
+                               $ ([do
+                                    try whiteSpaceCharLexer
+                                    return ""]
                                   ++ [do try eof; return ""]
-                                  ++ [try $ string s | (s, _) <- symbolTokens])
+                                  ++ [try $ string s
+                                      | (s, _) <- symbolTokens])
                      return st) <?> ("keyword " ++ str)
 
 symbolLexer :: String -> Parser (Tagged String)
@@ -74,7 +79,8 @@ hexNumberLexer = taggedParser $ do
   let hexCharToNum c = if c<='9'
                          then ord c - ord '0'
                          else 10+((ord $ toUpper c) - ord 'A')
-  let number = toInteger $ foldl (\n c -> n*16 + hexCharToNum c) 0 numberString
+  let number = toInteger $ foldl (\n c -> n*16 + hexCharToNum c)
+               0 numberString
   return $ NumberToken number
 
 binNumberLexer :: Parser (Tagged Token)
@@ -84,7 +90,8 @@ binNumberLexer = taggedParser $ do
   numberString <- many1 $ oneOf ['0', '1']
   char 'b' <|> char 'B'
   let binCharToNum c = ord c - ord '0'
-  let number = toInteger $ foldl (\n c-> n*2 + binCharToNum c) 0 numberString
+  let number = toInteger $ foldl (\n c-> n*2 + binCharToNum c)
+               0 numberString
   return $ NumberToken number
 
          
@@ -104,7 +111,7 @@ timePart mark prevDate coef = do
                  return $ read numberString) <|> return 0
   return $ prevDate + maybeDate * coef
          
-timeLexer :: Parser (Tagged Token) -- TODO Empty case
+timeLexer :: Parser (Tagged Token)
 timeLexer = taggedParser $ do
   whiteSpaceLexer
   char '#'

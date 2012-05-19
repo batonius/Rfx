@@ -1,0 +1,177 @@
+const int8 button_speed_up = 1;
+const int8 button_speed_down = 0;
+const int8 button_pause_time_up = 3;
+const int8 button_pause_time_down = 2;
+const int8 button_move_time_up = 5;
+const int8 button_move_time_down = 4;
+bool button_up = false;
+int8 button = 0;
+int8[6] lcd;
+int8[10] number_lines = 
+   (000000011b, 010011111b, 000100101b, 000001101b, 010011001b
+   ,001001001b, 001000001b, 000011111b, 000000001b, 000001001b);
+int8 mov = 0;
+int8 speed = 50;
+int8 pause_time=5;
+int8 move_time=5;
+int8 time_left=0;
+int8 stage = 0;
+void clean_lcd() 
+	lcd = (0ffh, 0ffh, 0ffh,
+		   0ffh, 0ffh, 0ffh);
+end;
+
+void show_data()
+	lcd = (number_lines[speed % 10]
+		,number_lines[(speed/10)%10]
+		,number_lines[pause_time%10]
+		,number_lines[move_time%10]
+		,number_lines[time_left%10]
+		,number_lines[stage%10]);
+end;
+
+int8 normalize(int8 n, int8 max, int8 min)
+	if n>max then
+		return max;
+	elif n<min then
+		return min;
+	else 
+		return n;
+	end;
+end;
+
+thread main where
+	state init where
+		clean_lcd();
+		show_data();
+		next main;
+	end;
+	state main where
+		wait button_up;
+		if button == button_speed_up then
+			speed = speed + 5;
+		elif button == button_speed_down then
+			speed = speed - 5;
+		elif button == button_pause_time_up then
+			pause_time = pause_time + 1;
+		elif button == button_pause_time_down then
+			pause_time = pause_time - 1;
+		elif button == button_move_time_up then
+			move_time = move_time + 1;
+		elif button == button_move_time_down then
+			move_time = move_time - 1;
+		end;
+		speed = normalize(speed, 99, 10);
+		pause_time = normalize(pause_time, 9, 1);
+		move_time = normalize(move_time, 9, 1);
+		show_data();
+		button_up = false;
+	end;
+end;
+
+thread cycle where
+	int8 time_to_wait;
+	state move_forward where
+		time_left = 0;
+		stage = 1;
+		show_data();
+		mov = 1;
+		wait getPortBit(3, 1);
+		wait getPortBit(3, 1) == False;
+		next pause1;
+	end;
+	state pause1 where
+		stage = 2;
+		mov = 0;
+		time_to_wait = pause_time;
+		while time_to_wait>0 do
+			time_left = time_to_wait;
+			show_data();
+			wait timeAddMs(#0ms, 1000);
+			time_to_wait = time_to_wait - 1;			
+		end;
+		next move_backward;
+	end;
+	state move_backward where
+		stage = 3;
+		mov = 2;
+		time_to_wait = move_time;
+		while time_to_wait>0 do
+			time_left = time_to_wait;
+			show_data();
+			wait timeAddMs(#0ms, 1000);	
+			time_to_wait = time_to_wait - 1;
+		end;
+		next pause2;
+	end;
+	state pause2 where
+		stage = 4;
+		mov = 0;
+		time_to_wait = pause_time;
+		while time_to_wait>0 do
+			time_left = time_to_wait;
+			show_data();
+			wait timeAddMs(#0ms, 1000);
+			time_to_wait = time_to_wait - 1;
+		end;
+		next move_forward;
+	end;
+end;
+
+thread shir where
+	state go where
+		wait mov != 0;
+		if mov==1 then
+			setPortBit(3, 2, True);
+			setPortBit(3, 3, False);
+			setPortBit(3, 4, False);
+			setPortBit(3, 5, True);
+		else		
+			setPortBit(3, 2, False);
+			setPortBit(3, 3, True);
+			setPortBit(3, 4, True);
+			setPortBit(3, 5, False);
+		end;
+		wait timeAddMs(#0ms, 30*speed/100);
+		next stop;
+	end;
+	state stop where
+		setPortBit(3, 2, False);
+		setPortBit(3, 3, False);
+		setPortBit(3, 4, False);
+		setPortBit(3, 5, False);
+		wait timeAddMs(#0ms, 30*(100-speed)/100);
+		next go;
+	end;
+end;
+
+thread lcd_keyboard where
+	int8 char = 0;
+	bool button_down = false;
+	int8 n_button_down = 0;
+	state lcd_state where
+		int8 i = 0;
+		if char>5 then
+			char = 0;
+		end;
+		setPortByte(2, 0);
+		setPortBit(2, char, True);
+		setPortByte(4, lcd[char]);
+		wait #2ms;
+		if button_up == false then
+			if button_down then
+				if char == n_button_down
+			   	   and getPortBit(3, 0)==false then
+			   		button_down = false;
+			   		button = char;
+			    	button_up = true;
+				end;			
+			elif getPortBit(3, 0) then
+				button_down = true;
+				n_button_down = char;
+			end;
+		end;
+		char = char + 1;
+		wait #2ms;
+	end;
+end;

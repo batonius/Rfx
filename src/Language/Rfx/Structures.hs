@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeFamilies,FlexibleContexts,NamedFieldPuns #-}
+{-# LANGUAGE TypeFamilies,FlexibleContexts,NamedFieldPuns
+  , StandaloneDeriving , UndecidableInstances #-}
 module Language.Rfx.Structures(Program(..),
                                Thread(..),
                                ThreadState(..),
@@ -35,27 +36,34 @@ import Text.ParserCombinators.Parsec(SourcePos)
 import qualified Data.Map as Map
 
 -- Program
-data (Expression e) => Program e = Program
+data Program e = Program
     {
       programThreads :: [Thread e]
     , programVars :: [Var e]
     , programFuncs :: [Func e]
-    } deriving (Eq)
+    } 
+
+deriving instance (Expression e, Eq (Thread e), Eq (Var e), Eq (Func e))
+         => Eq (Program e)
 
 -- Real objects
-data (Expression e) => Thread e = Thread
+data Thread e = Thread
     {
       threadName :: String
     , threadStates :: [ThreadState e]
-    } deriving (Ord)
+    }
 
-data (Expression e) => ThreadState e = ThreadState
+deriving instance (Expression e, Ord (ThreadState e)) => Ord (Thread e)
+
+data ThreadState e = ThreadState
     {
       stateName :: String
     , stateStatments :: [Statment e]
-    } deriving (Ord)
+    } 
 
-data (Expression e) => Var e = Var
+deriving instance (Expression e, Ord (Statment e)) => Ord (ThreadState e)
+
+data Var e = Var
     {
       varName :: String
     , varInitValue :: e
@@ -65,8 +73,15 @@ data (Expression e) => Var e = Var
     , varArg :: Bool
     , varConst :: Bool
     }
-                               deriving (Show, Ord)
 
+deriving instance (Expression e, Show e, Show (ProgramPos e)
+                  , Show (EVariableType e))
+             => (Show (Var e))
+
+deriving instance (Expression e, Ord e, Ord (ProgramPos e)
+                  , Ord (EVariableType e))
+             => (Ord (Var e))
+                
 data VarType = Int8Type
              | Int16Type
              | Int32Type
@@ -81,11 +96,14 @@ data VarType = Int8Type
                }
                deriving (Show, Eq, Ord)
 
-data (Expression e) => RValue e = RValueVar (EVariable e)
-                               | RValueArrayAccess (RValue e) e
-                               deriving (Show, Eq, Ord)
+data RValue e = RValueVar (EVariable e)
+              | RValueArrayAccess (RValue e) e
 
-data (Expression e) => Func e = BuildinFunc
+deriving instance (Expression e, Show (EVariable e), Show e) => Show (RValue e)
+deriving instance (Expression e, Ord (EVariable e), Ord e) => Ord (RValue e)
+deriving instance (Expression e, Eq (EVariable e), Eq e) => Eq (RValue e)
+         
+data Func e = BuildinFunc
     {
       biFuncName       ::String
     , biFuncTargetName :: String
@@ -100,7 +118,18 @@ data (Expression e) => Func e = BuildinFunc
     , uFuncRetType   ::(EVariableType e)
     , uFuncPos       ::SourcePos
     }
-                               deriving (Show, Ord)
+
+deriving instance (Expression e
+                  , Show (EVariableType e)
+                  , Show (Var e)
+                  , Show (Statment e))
+             => Show (Func e)
+
+deriving instance (Expression e
+                  , Ord (Var e)
+                  , Ord (EVariableType e)
+                  , Ord (Statment e))
+             => Ord (Func e)                
 -- Names
 data ThreadName = ThreadName String deriving (Show, Eq, Ord)
 data StateName = StateName String deriving (Show, Eq, Ord)
@@ -113,23 +142,7 @@ data VarTypeName = VarTypeName String
 data FuncName = FuncName String  deriving (Show, Eq, Ord)
 
 -- Expr class
-class (Eq e
-      ,Eq (EVariable e)
-      ,Ord (EVariable e)
-      ,Show (EVariable e)
-      ,Eq (EVariableType e)
-      ,Ord (EVariableType e)
-      ,Show (EVariableType e)
-      ,Eq (EFunction e)
-      ,Ord (EFunction e)
-      ,Show (EFunction e)
-      ,Eq (EThread e)
-      ,Ord (EThread e)
-      ,Show (EThread e)
-      ,Eq (EState e)
-      ,Ord (EState e)
-      ,Show (EState e)
-      ) => Expression e where
+class Expression e where
     type EVariable e :: *
     type EVariableType e :: *
     type EFunction e :: *
@@ -140,7 +153,7 @@ class (Eq e
     subExpr :: e -> Bool
     varExpr :: e -> Bool
     voidExpr :: e -> Bool
-
+                
 -- Expr instances
 data SynExpr = NumSynExpr Integer SourcePos
              | OpSynExpr SynOper SynExpr SynExpr SourcePos
@@ -227,7 +240,9 @@ instance (Expression e) => Eq (Func e) where
     (==) _ _ = False
 
 -- Show instances
-instance (Expression e, Show e) => Show (Program e) where
+instance (Expression e, Show e, Show (Thread e)
+         , Show (Var e), Show (Func e)
+         , Show (EState e), Show (EVariable e)) => Show (Program e) where
     show Program{programThreads, programVars} =
         "Program {"
         ++ "programVars=["
@@ -254,12 +269,23 @@ instance (Expression e) => Show (ThreadState e) where
     show ThreadState{stateName} = "State " ++ stateName ++ " "
 
 -- ProgramPos
-data (Expression e) => ProgramPos e = InGlobal
-                                   | InThread (EThread e)
-                                   | InState (EThread e) (EState e)
-                                   | InFunction (EFunction e)
-                                     deriving (Show, Eq, Ord)
+data ProgramPos e = InGlobal
+                  | InThread (EThread e)
+                  | InState (EThread e) (EState e)
+                  | InFunction (EFunction e)
 
+deriving instance (Expression e, Show (EThread e), Show (EState e)
+                  , Show (EFunction e))
+             => Show (ProgramPos e)
+
+deriving instance (Expression e, Ord (EThread e), Ord (EState e)
+                  , Ord (EFunction e))
+             => Ord (ProgramPos e)
+                
+deriving instance (Expression e, Eq (EThread e), Eq (EState e)
+                  , Eq (EFunction e))
+             => Eq (ProgramPos e)
+                             
 -- Operators
 data SynOper = PlusSynOp
              | MinusSynOp
@@ -304,7 +330,7 @@ data SemOper = NumPlusSemOp
                deriving (Show, Eq, Ord)
 
 -- StatEments, lol
-data (Expression e) => Statment e = AssignSt (RValue e) e SourcePos
+data Statment e = AssignSt (RValue e) e SourcePos
                                  | IfSt e [Statment e] SourcePos
                                  | IfElseSt e [Statment e] [Statment e] SourcePos
                                  | WhileSt e [Statment e] SourcePos
@@ -313,7 +339,15 @@ data (Expression e) => Statment e = AssignSt (RValue e) e SourcePos
                                  | FunSt e SourcePos
                                  | ReturnSt e SourcePos
                                  | WaitSt e Int SourcePos
-                                   deriving (Show, Eq, Ord)
+
+deriving instance (Expression e, Show (EState e), Show (RValue e), Show e)
+         => Show (Statment e)
+
+deriving instance (Expression e, Eq (EState e), Eq (RValue e), Eq e)
+         => Eq (Statment e)
+
+deriving instance (Expression e, Ord (EState e), Ord (RValue e), Ord e)
+         => Ord (Statment e)
 
 -- Functions
 statmentPos :: (Expression e) => Statment e -> SourcePos
@@ -373,7 +407,10 @@ isArrayType :: VarType -> Bool
 isArrayType (ArrayType _ _) = True
 isArrayType _ = False
 
-posChildOf :: (Expression e) => ProgramPos e -> ProgramPos e -> Bool
+posChildOf :: (Expression e
+              , Eq (EFunction e)
+              , Eq (EThread e)
+              , Eq (EState e)) => ProgramPos e -> ProgramPos e -> Bool
 posChildOf _ InGlobal = True
 posChildOf (InFunction f) (InFunction g) = f == g
 posChildOf (InFunction _) _ = False

@@ -28,13 +28,13 @@ data CompilerState = CompilerState
 type Compiler a = State CompilerState a
 
 addString :: String -> Compiler ()
-addString s = State (\state -> ((), state{compilerCode=(compilerCode state)++s}))
+addString s = state (\state -> ((), state{compilerCode=(compilerCode state)++s}))
 
 dropLastChar ::Compiler ()
-dropLastChar = State (\state -> ((), state{compilerCode = init (compilerCode state)}))
+dropLastChar = state (\state -> ((), state{compilerCode = init (compilerCode state)}))
 
 makeIndent :: Compiler ()
-makeIndent = State (\state -> ((), state{compilerCode=(compilerCode state)
+makeIndent = state (\state -> ((), state{compilerCode=(compilerCode state)
                                           ++ (replicate (compilerIndent state) ' ')}))
 
 withIndent :: Compiler () -> Compiler ()
@@ -50,7 +50,7 @@ addLine s = do
   addString "\n"
 
 nextIterator :: String -> Compiler Int
-nextIterator s = State (\state ->
+nextIterator s = state (\state ->
                             let its = compilerIterators state in
                             if Map.member s its then
                                 (its Map.! s, state{compilerIterators=
@@ -60,7 +60,7 @@ nextIterator s = State (\state ->
                                               Map.insert s 0 its}))
 
 zeroIterator :: String -> Compiler ()
-zeroIterator s = State (\state ->
+zeroIterator s = state (\state ->
                             let its = compilerIterators state in
                             ((), state{compilerIterators=
                                            (if Map.member s its then
@@ -69,27 +69,27 @@ zeroIterator s = State (\state ->
                                                 Map.insert s 0 its)}))
 
 addIndent :: Compiler ()
-addIndent = State (\state -> ((), state{compilerIndent=(compilerIndent state)+4}))
+addIndent = state (\state -> ((), state{compilerIndent=(compilerIndent state)+4}))
 
 subIndent :: Compiler ()
-subIndent = State (\state -> ((), state{compilerIndent=(compilerIndent state)-4}))
+subIndent = state (\state -> ((), state{compilerIndent=(compilerIndent state)-4}))
 
 getVarsFromScope :: ProgramPos SemExpr -> Compiler [Var SemExpr]
-getVarsFromScope pos = State(\state ->
+getVarsFromScope pos = state (\state ->
                                (Set.toList $ Set.filter (\ var -> (varScope var) == pos) (compilerVars state),
                                 state))
 
 enterThread :: Thread SemExpr -> Compiler ()
-enterThread th =State(\state -> ((),state{compilerCurrentThread = th}))
+enterThread th =state (\state -> ((),state{compilerCurrentThread = th}))
 
 getCurrentThread :: Compiler (Thread SemExpr)
-getCurrentThread = State(\state -> ((compilerCurrentThread state), state))
+getCurrentThread = state (\state -> ((compilerCurrentThread state), state))
 
 getCurrentState :: Compiler (ThreadState SemExpr)
-getCurrentState = State(\state -> ((compilerCurrentState state), state))
+getCurrentState = state (\state -> ((compilerCurrentState state), state))
 
 enterState :: ThreadState SemExpr -> Compiler ()
-enterState st = State(\state -> ((), state{compilerCurrentState=st}))
+enterState st = state (\state -> ((), state{compilerCurrentState=st}))
 
 getState :: String -> Compiler (ThreadState SemExpr)
 getState stName = do
